@@ -1,19 +1,24 @@
 import pytest
 
 from unittest.mock import patch, Mock
-from axpert.connector_serial import (SerialConnector)
+from axpert.connector_serial import (
+    SerialConnector, MAX_CONNECT_RETRIES
+)
 
 
 def test_serial_reconnect():
     MockSerialException = Mock()
 
     class MockSerial(Mock):
+
+        fail = False
+
         def __init__(self, *args, **kwargs):
             super(MockSerial, self).__init__(*args, **kwargs)
-            fail = False
 
-        def enable_fail():
-            fail = True
+        @classmethod
+        def enable_fail(cls):
+            cls.fail = True
 
         def read(self, *args):
             if self.fail:
@@ -31,10 +36,12 @@ def test_serial_reconnect():
             patch('axpert.connector_serial.exit') as mock_exit:
 
         with SerialConnector(devices=['/dev/ttyUSB0']) as connector:
+            #Proper read
             res = connector.read(20)
             assert res and res == 'a' * 20
 
+            #Force fail and make sure we retry
             mock_serial.enable_fail()
             res = connector.read(20)
             mock_exit.assert_called_once_with(1)
-
+            assert mock_sleep.call_count == MAX_CONNECT_RETRIES
