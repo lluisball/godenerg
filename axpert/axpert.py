@@ -39,18 +39,18 @@ def execute(connector, cmd, result_size=7):
 def run_cmd(args):
     Connector = resolve_connector(args)
     with Connector(devices=args['devices']) as connector:
-        out = execute(
+        response = execute(
             connector, args['cmd'], result_size=args['size'],
             out_format=args['format']
         )
-        if out.status == Status.OK:
-            print(out.data)
-        elif out.status == Status.KO:
+        if response.status == Status.OK:
+            print(response.data)
+        elif response.status == Status.KO:
             print("\nCommand not understood by inverter:\n")
             print('-' * 40)
-            print(out.data)
+            print(response.data)
             print('-' * 40)
-        elif out.status == Status.NN:
+        elif response.status == Status.NN:
             print("\nUnknown error, no data was returned\n")
 
 

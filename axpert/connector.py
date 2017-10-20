@@ -2,8 +2,8 @@ from importlib import import_module
 
 IMPLEMENT = 'Implement in subclass'
 connector_registry = {
-    'serial': 'connector_serial.ConnectorSerial',
-    'usb': 'connector_usbhid'
+    'serial': 'axpert.connector_serial.ConnectorSerial',
+    'usb': 'axpert.connector_usbhid'
 }
 
 
@@ -33,6 +33,9 @@ class Connector(object):
 
 
 def resolve_connector(args):
-    for option, module_namespace in connector_registry.items():
-        if args[option]:
-            return import_module(module_namespace)
+    for option, cls_namespace in connector_registry.items():
+        if option in args and args[option]:
+            tokens = cls_namespace.split('.')
+            module_path, cls_name = '.'.join(tokens[:-1]), tokens[-1]
+            module = import_module(module_path)
+            return getattr(module, cls_name)
