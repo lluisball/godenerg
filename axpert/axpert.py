@@ -3,8 +3,8 @@ from collections import namedtuple
 from enum import IntEnum
 from crc16 import crc16xmodem
 
-from connector import resolve_connector
-from cmd_parser import parse_args
+from axpert.connector import resolve_connector
+from axpert.cmd_parser import parse_args
 
 NAK, ACK = 'NAK', 'ACK'
 
@@ -27,7 +27,7 @@ def parse_response_status(data):
 
 
 def execute(connector, cmd, result_size=7):
-    checksum = crc16xmodem(cmd)
+    checksum = crc16xmodem(cmd.encode())
     request = cmd + pack('>H', checksum) + '\r'
     connector.write(request)
     data = connector.read(result_size)
