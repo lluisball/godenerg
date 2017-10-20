@@ -38,7 +38,7 @@ def execute(connector, cmd, val, result_size=7):
     value = val.encode() if val else b''
     encoded_cmd = cmd.encode() + value 
     checksum = crc16xmodem(encoded_cmd)
-    request = encoded_cmd + pack('>H', checksum) + '\r\n'.encode()
+    request = encoded_cmd + pack('>H', checksum) + '\r'.encode()
     connector.write(request[:8])
     connector.write(request[8:])
     data = connector.read(int(result_size))
