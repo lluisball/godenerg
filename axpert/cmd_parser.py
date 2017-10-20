@@ -14,6 +14,7 @@ def validate_args(args):
 
 
 def find_cmd(args):
+    
     for cmd, (op_code, size) in CMD_REL.items():
         if cmd in args and args[cmd]:
             return {'cmd': op_code, 'size': size}
@@ -23,11 +24,11 @@ def parse_args():
     parser = ArgumentParser(prog='axpert.py')
 
     parser.add_argument(
-        '--usb', action='store_true', default=False,
+        '--usb', action='store_true', 
         help='Connect trough usbhid device', dest='usb'
     )
     parser.add_argument(
-        '--serial', action='store_true', default=True,
+        '--serial', action='store_true',
         help='Connect trough serial device', dest='serial'
     )
     parser.add_argument(
@@ -44,8 +45,8 @@ def parse_args():
         help='Value for command that sets configuration'
     )
     parser.add_argument(
-        '-s', '--size', dest='response_size',
-        type=int, default=7, help='Expected response size for command'
+        '-s', '--size', dest='size',
+        type=int, help='Expected response size for command'
     )
     parser.add_argument(
         '--status', dest='status', default=False,
@@ -62,7 +63,7 @@ def parse_args():
 
     args = vars(parser.parse_args())
     validate_args(args)
-    if 'cmd' in args:
+    if 'cmd' in args and args['cmd'] is not None:
         cmd_data = {'cmd': args['cmd'], 'size': args['size']}
     else:
         cmd_data = find_cmd(args)

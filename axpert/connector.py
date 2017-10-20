@@ -3,7 +3,7 @@ from importlib import import_module
 IMPLEMENT = 'Implement in subclass'
 connector_registry = {
     'serial': 'axpert.connector_serial.ConnectorSerial',
-    'usb': 'axpert.connector_usbhid'
+    'usb': 'axpert.connector_usbhid.USBConnector'
 }
 
 
