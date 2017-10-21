@@ -7,20 +7,25 @@ CmdSpec=namedtuple('CmdSpec', ['code', 'size', 'val', 'json'])
 
 def status_json_formatter(raw):
     structure = (
-        ('voltage_grid', '%f'), ('freq_grid', '%f'),
-        ('ac_voltage', '%f'), ('ac_freq', '%f'),
-        ('ac_watts', '%d'), ('batt_charge', '%f'),
-        ('batt_charge_amps', '%d'), ('batt_charge_percent', '%d'),
-        ('temp', '%d'), ('pv_amps', '%d'),
-        ('pv_volts', '%f'), ('batt_charge_2', '%f'),
-        ('batt_discharge_amps', '%d'), ('mask_a', '%d'),
+        ('grid_volt', '%f'), ('grid_freq', '%f'),
+        ('ac_volt', '%f'), ('ac_freq', '%f'),
+        ('ac_va', '%d'), ('ac_watt', '%d'),
+        ('load_percent', '%f'), ('bus_volt', '%f'),
+        ('batt_volt'), ('batt_charge_amps'),
+        ('batt_capacity'), ('temp', '%d'),
+        ('pv_amps', '%d'), ('pv_volts', '%f'),
+        ('batt_volt_scc', '%f'), ('batt_discharge_amps', '%d'),
+        ('device_status', '%s'),
         ('mask_b','%d'), ('mask_c', '%d'),
         ('pv_watts', '%d'), ('mask_d', '%d')
     )
 
+    # Ignore initial '(' and end 2 byte CRC and split
+    raw_tokens = raw[1:-2].split(' ')
+
     data = {
-        label: form % float(token)
-        for (label, form), token in zip(structure, raw[1:-2].split(' '))
+        label: (form % float(token) if not '%s' in token else token)
+        for (label, form), token in zip(structure, raw_tokens)
     }
 
     return json_dumps(data)
