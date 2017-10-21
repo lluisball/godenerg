@@ -8,7 +8,7 @@ from crc16 import crc16xmodem
 curr_dir = os.path.dirname(os.path.realpath(__file__))
 root_dir = os.path.abspath(os.path.join(curr_dir, '..'))
 
-if root_dir not in sys.path: # add parent dir to paths
+if root_dir not in sys.path:
     sys.path.append(root_dir)
 
 from axpert.connector import resolve_connector
@@ -34,27 +34,35 @@ def parse_response_status(data):
         return Status.KO
 
 
-def execute(connector, cmd, val, result_size=7):
-    value = val.encode() if val else b''
-    encoded_cmd = cmd.encode() + value 
+def execute(connector, cmd):
+    value = cmd.val if cmd.val else ''
+    encoded_cmd = cmd.code.encode() + value.encode()
     checksum = crc16xmodem(encoded_cmd)
-    request = encoded_cmd + pack('>H', checksum) + '\r'.encode()
+    request = iter(encoded_cmd + pack('>H', checksum) + b'\r')
+
+    # No commands take more than 16 bytes
+    # Take first 8 and second 8 if any
     connector.write(request[:8])
-    connector.write(request[8:])
-    data = connector.read(int(result_size))
+    if len(request) > 8:
+        connector.write(request[8:])
+
     return Response(
-        data=data,
+        data=r.read(int(cmd.size)),
         status=parse_response_status(data)
     )
 
 def run_cmd(args):
     Connector = resolve_connector(args)
     with Connector(devices=args['devices']) as connector:
-        response = execute(
-            connector, args['cmd'], args['val'], result_size=args['size'],
-        )
+        cmd = args['cmd']
+        response = execute(connector, cmd)
+
         if response.status == Status.OK or response.status.NN:
-            print(response.data)
+            if args['output_format'] == 'json' and cmd['json']:
+                print(cmd.json(response.data))
+            else:
+                print(response.data)
+
         elif response.status == Status.KO:
             print("\nCommand not understood by inverter:\n")
             print('-' * 40)

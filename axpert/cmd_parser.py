@@ -1,5 +1,5 @@
 from argparse import ArgumentParser
-from axpert.protocol import CMD_REL
+from axpert.protocol import CMD_REL, CmdSpec
 
 
 def validate_args(args):
@@ -14,17 +14,16 @@ def validate_args(args):
 
 
 def find_cmd(args):
-    
-    for cmd, (op_code, size) in CMD_REL.items():
+    for cmd, cmd_spec in CMD_REL.items():
         if cmd in args and args[cmd]:
-            return {'cmd': op_code, 'size': size}
+            return cmd_spec
 
 
 def parse_args():
-    parser = ArgumentParser(prog='axpert.py')
+    parser = ArgumentParser(prog='main.py')
 
     parser.add_argument(
-        '--usb', action='store_true', 
+        '--usb', action='store_true',
         help='Connect trough usbhid device', dest='usb'
     )
     parser.add_argument(
@@ -64,11 +63,14 @@ def parse_args():
     args = vars(parser.parse_args())
     validate_args(args)
     if 'cmd' in args and args['cmd'] is not None:
-        cmd_data = {'cmd': args['cmd'], 'size': args['size']}
+        cmd_data = CmdSpec(
+            code=args['cmd'], size=args['size'],
+            val=args['value'], json=None
+        )
     else:
         cmd_data = find_cmd(args)
 
     return {
-        **cmd_data, 'val': args['value'], 'devices': args['devices'],
+        'cmd': cmd_data, 'devices': args['devices'],
         'serial': args['serial'], 'usb': args['usb']
     }
