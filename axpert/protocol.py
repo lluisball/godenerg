@@ -18,43 +18,55 @@ def parse_device_status(raw_status):
         0b110: SOLAR_CHARGING,
         0b000: NOT_CHARGING
     } 
-
-    check_source = lambda mask, current: (mask & current) == mask 
     data = int(raw_status, 2)
 
     return {
         'charge_source': [
             source for mask, source in charge_sources.items() 
-            if check_source(mask, data)
+            if (mask & data) == mask
         ],
-        'batt_volt_to_steady': bool(0b1000 & data),
-        'load_status': bool(0b10000 & data),
-        'ssc_firmware_updated': bool(0b100000 & data),
-        'configuration_changed': bool(0b100000 & data),
-        'sbu_priority_version': bool(0b1000000 & data)
+        'batt_volt_to_steady': bool(8 & data),
+        'load_status': bool(16 & data),
+        'ssc_firmware_updated': bool(32 & data),
+        'configuration_changed': bool(64 & data),
+        'sbu_priority_version': bool(128 & data)
     }
 
 
+def typer(frmt):
+    types = {'s': str, 'f': float, 'd': int}
+
+    for frm, type_fnx in types.items():
+        if frm in frmt:
+            return lambda txt:type_fnx(frmt % type_fnx(txt))
+
+    return lambda txt: txt % frmt
+
+
 def status_json_formatter(raw):
+    to_float = typer('%.2f')
+    to_int = typer('%d')
+    to_str = typer('%s')
+
     structure = (
-        ('grid_volt', '%.2f'), ('grid_freq', '%.2f'),
-        ('ac_volt', '%.2f'), ('ac_freq', '%.2f'),
-        ('ac_va', '%d'), ('ac_watt', '%d'),
-        ('load_percent', '%.2f'), ('bus_volt', '%.2f'),
-        ('batt_volt', '%.2f'), ('batt_charge_amps', '%d'),
-        ('batt_capacity', '%d'), ('temp', '%d'),
-        ('pv_amps', '%d'), ('pv_volts', '%.2f'),
-        ('batt_volt_scc', '%.2f'), ('batt_discharge_amps', '%d'),
-        ('raw_status', '%s'),
-        ('mask_b','%d'), ('mask_c', '%d'),
-        ('pv_watts', '%d'), ('mask_d', '%d')
+        ('grid_volt', to_float), ('grid_freq', to_float),
+        ('ac_volt', to_float), ('ac_freq', to_float),
+        ('ac_va', to_int), ('ac_watt', to_int),
+        ('load_percent', to_float), ('bus_volt', to_float),
+        ('batt_volt', to_float), ('batt_charge_amps', to_int),
+        ('batt_capacity', to_int), ('temp', to_int),
+        ('pv_amps', to_int), ('pv_volts', to_float),
+        ('batt_volt_scc', to_float), ('batt_discharge_amps', to_int),
+        ('raw_status', to_str),
+        ('mask_b',to_int), ('mask_c', to_int),
+        ('pv_watts', to_int), ('mask_d', to_int)
     )
 
     # Ignore initial '(' and end 5 byte split
     raw_tokens = raw[1:-5].split(' ')
     data = {
-        label: (form % float(token) if not '%s' in form else token)
-        for (label, form), token in zip(structure, raw_tokens)
+        label: formatter(token)
+        for (label, formatter), token in zip(structure, raw_tokens)
     }
     return json_dumps({**data, **parse_device_status(data['raw_status'])})
 
