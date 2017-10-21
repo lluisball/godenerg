@@ -54,11 +54,8 @@ def run_cmd(args):
     with Connector(devices=args['devices']) as connector:
         cmd = args['cmd']
         response = execute(connector, cmd)
-
         if response.status == Status.OK or response.status.NN:
-            if 'output_format' in args                  \
-                    and args['output_format'] == 'json' \
-                    and cmd['json']:
+            if 'format' in args and args['format'] == 'json' and cmd.json:
                 print(cmd.json(response.data))
             else:
                 print(response.data)

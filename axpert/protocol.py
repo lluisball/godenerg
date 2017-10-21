@@ -7,7 +7,8 @@ CmdSpec=namedtuple('CmdSpec', ['code', 'size', 'val', 'json'])
 
 def status_json_formatter(raw):
     structure = (
-        ('mode','%s'), ('voltage_grid', '%f'),
+        ('voltage_grid', '%f'), ('freq_grid', '%f'),
+        ('ac_voltage', '%f'), ('ac_freq', '%f'),
         ('ac_watts', '%d'), ('batt_charge', '%f'),
         ('batt_charge_amps', '%d'), ('batt_charge_percent', '%d'),
         ('temp', '%d'), ('pv_amps', '%d'),
@@ -18,8 +19,8 @@ def status_json_formatter(raw):
     )
 
     data = {
-        label: form % token
-        for (label, form), token in zip(structure, raw.split(' '))
+        label: form % float(token)
+        for (label, form), token in zip(structure, raw[1:-2].split(' '))
     }
 
     return json_dumps(data)

@@ -72,5 +72,6 @@ def parse_args():
 
     return {
         'cmd': cmd_data, 'devices': args['devices'],
-        'serial': args['serial'], 'usb': args['usb']
+        'serial': args['serial'], 'usb': args['usb'],
+        'format': args['output_format']
     }
