@@ -38,18 +38,16 @@ def execute(connector, cmd):
     value = cmd.val if cmd.val else ''
     encoded_cmd = cmd.code.encode() + value.encode()
     checksum = crc16xmodem(encoded_cmd)
-    request = iter(encoded_cmd + pack('>H', checksum) + b'\r')
+    request = encoded_cmd + pack('>H', checksum) + b'\r'
 
     # No commands take more than 16 bytes
     # Take first 8 and second 8 if any
     connector.write(request[:8])
     if len(request) > 8:
         connector.write(request[8:])
-
-    return Response(
-        data=r.read(int(cmd.size)),
-        status=parse_response_status(data)
-    )
+    
+    response = connector.read(int(cmd.size))
+    return Response(data=response, status=parse_response_status(response))
 
 def run_cmd(args):
     Connector = resolve_connector(args)
@@ -58,7 +56,9 @@ def run_cmd(args):
         response = execute(connector, cmd)
 
         if response.status == Status.OK or response.status.NN:
-            if args['output_format'] == 'json' and cmd['json']:
+            if 'output_format' in args                  \
+                    and args['output_format'] == 'json' \
+                    and cmd['json']:
                 print(cmd.json(response.data))
             else:
                 print(response.data)
