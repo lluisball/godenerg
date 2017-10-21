@@ -37,13 +37,14 @@ def test_validate_args(args_data, exit_val):
 
 @pytest.mark.parametrize(
     'mock_parse_args, expected', [
-    ({'cmd': 'QQQ', 'size': 120,
-       'serial': True, 'usb': False,
-       'devices': None, 'value': '33.3'},
+    ({'cmd': 'QQQ', 'size': 120, 'serial': True,
+      'usb': False, 'devices': None, 'value': '33.3',
+      'output_format': 'raw'},
      {'cmd': CmdSpec(code='QQQ', size=120, val='33.3', json=None),
       'serial': True, 'usb': False}),
      ({'info': True, 'serial': False, 'usb': True,
-       'devices': None, 'value': None, 'size': None},
+       'devices': None, 'value': None, 'size': None,
+       'output_format':'raw'},
       {'cmd': CmdSpec(code='QPAS', size=66, val=None, json=None),
        'serial': False, 'usb': True})
     ]
