@@ -59,6 +59,11 @@ def parse_args():
         '-f', '--format', dest='output_format', default='raw',
         help='Output format for response', choices=['raw', 'json']
     )
+    parser.add_argument(
+        '-d', '--daemon', dest='daemonize', action='store_true',
+        help='', default=False
+    )
+
 
     args = vars(parser.parse_args())
     validate_args(args)
@@ -73,5 +78,6 @@ def parse_args():
     return {
         'cmd': cmd_data, 'devices': args['devices'],
         'serial': args['serial'], 'usb': args['usb'],
-        'format': args['output_format']
+        'format': args['output_format'],
+        'daemonize': args['daemonize']
     }
