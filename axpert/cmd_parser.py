@@ -60,7 +60,7 @@ def parse_args():
         help='Output format for response', choices=['raw', 'json']
     )
     parser.add_argument(
-        '-d', '--daemon', dest='daemonize', action='store_true',
+        '--daemon', dest='daemonize', action='store_true',
         help='', default=False
     )
 

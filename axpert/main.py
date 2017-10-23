@@ -1,9 +1,11 @@
 import os, sys
+import daemon
 
 from struct import pack
 from collections import namedtuple
 from enum import IntEnum
 from crc16 import crc16xmodem
+from time import sleep
 
 curr_dir = os.path.dirname(os.path.realpath(__file__))
 root_dir = os.path.abspath(os.path.join(curr_dir, '..'))
@@ -34,7 +36,7 @@ def parse_response_status(data):
         return Status.KO
 
 
-def _execute(connector, cmd):
+def execute(connector, cmd):
     value = cmd.val if cmd.val else ''
     encoded_cmd = cmd.code.encode() + value.encode()
     checksum = crc16xmodem(encoded_cmd)
@@ -62,7 +64,7 @@ def run_cmd(args):
         cmd = args['cmd']
         response = execute(connector, cmd)
         if response.status == Status.OK or response.status == Status.NN:
-            if output_as_json(args)
+            if output_as_json(args):
                 print(cmd.json(response.data))
             else:
                 print(response.data)
@@ -81,7 +83,7 @@ def run_as_daemon(cntx, args):
         while True:
             response = execute(connector, cmd)
             if response.status == Status.OK or response.status == Status.NN:
-                with open('stats.log', 'w') as fw:
+                with open('{}/stats.log'.format(root_dir), 'w') as fw:
                     raw_stat = response.data
                     stat = cmd.json(raw_stat) if output_as_json else raw_stat
                     fw.write(stat)
