@@ -7,6 +7,9 @@ from enum import IntEnum
 from crc16 import crc16xmodem
 from time import sleep
 
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from threading import Thread
+
 curr_dir = os.path.dirname(os.path.realpath(__file__))
 root_dir = os.path.abspath(os.path.join(curr_dir, '..'))
 
@@ -74,24 +77,56 @@ def run_cmd(args):
             print('\n')
 
 
+
+def start_http_server(connector, cmd):
+    print ('> starting http server')
+    server = HTTPServer(
+        ('', 8889),
+        create_base_remote_cmd_handler(
+            atomic_execute, connector, cmd
+        )
+    )
+    thread = Thread(target = server.serve_forever)
+    thread.daemon = True
+    thread.start()
+    print('> http server started')
+
+
+def start_process_executer(connector, cmd):
+    pass
+
+
+def data_logger(connector, cmd):
+    pass
+
+
+def atomic_execute(connector, cmd):
+    with Lock():
+        return execute(connector, cmd)
+
+
 def run_as_daemon(cntx, args):
     Connector = resolve_connector(args)
     cmd = args['cmd']
     with Connector(devices=args['devices']) as connector:
+        start_http_server(connector, cmd)
+        start_process_executer(connector, cmd)
+
         while True:
-            response = execute(connector, cmd)
-            if response.status == Status.OK or response.status == Status.NN:
-                with open('{}/stats.log'.format(root_dir), 'w') as fw:
-                    raw_stat = response.data
-                    stat = cmd.json(raw_stat) if output_as_json else raw_stat
-                    fw.write(stat)
+            data_logger(connector, cmd)
+            #response = execute(connector, cmd)
+            #if response.status == Status.OK or response.status == Status.NN:
+            #    with open('{}/stats.log'.format(root_dir), 'w') as fw:
+            #        raw_stat = response.data
+            #        stat = cmd.json(raw_stat) if output_as_json else raw_stat
+            #        fw.write(stat)
             sleep(1)
 
 
 if __name__ == '__main__':
     args = parse_args()
     if args['daemonize']:
-        with daemon.DaemonContext() as cntx:
-            run_as_daemon(cntx, args)
+        #with daemon.DaemonContext() as cntx:
+        run_as_daemon({}, args)
     else:
         run_cmd(args)
