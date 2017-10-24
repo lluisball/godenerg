@@ -43,7 +43,7 @@ def typer(frmt):
     return lambda txt: txt % frmt
 
 
-def status_json_formatter(raw):
+def status_json_formatter(raw, ser=True):
     to_float = typer('%.2f')
     to_int = typer('%d')
     to_str = typer('%s')
@@ -68,11 +68,20 @@ def status_json_formatter(raw):
         label: formatter(token)
         for (label, formatter), token in zip(structure, raw_tokens)
     }
-    return json_dumps({**data, **parse_device_status(data['raw_status'])})
+    
+    struct = {**data, **parse_device_status(data['raw_status'])}
+    return json_dumps(struct) if ser else struct
 
 
-def operation_json_formatter(raw):
-    return raw
+def operation_json_formatter(raw, ser=True):
+    modes = {
+        'P': 'PM', 'S': 'SB',
+        'L': 'LN', 'B': 'BT',
+        'F': 'FA', 'H': 'PS'
+    }
+    mode_code = raw[1] 
+    data = {'mode': modes.get(mode_code, '00')}
+    return json_dumps(data) if ser else data
 
 
 CMD_REL = {
