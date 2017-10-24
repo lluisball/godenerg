@@ -68,12 +68,10 @@ def run_cmd(args):
                 print(cmd.json(response.data))
             else:
                 print(response.data)
-
         elif response.status == Status.KO:
             print("\nCommand not understood by inverter:\n")
-            print('-' * 40)
             print(response.data)
-            print('-' * 40)
+            print('\n')
 
 
 def run_as_daemon(cntx, args):

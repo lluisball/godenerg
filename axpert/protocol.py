@@ -17,12 +17,12 @@ def parse_device_status(raw_status):
         0b101: AC_CHARGING,
         0b110: SOLAR_CHARGING,
         0b000: NOT_CHARGING
-    } 
+    }
     data = int(raw_status, 2)
 
     return {
         'charge_source': [
-            source for mask, source in charge_sources.items() 
+            source for mask, source in charge_sources.items()
             if (mask & data) == mask
         ],
         'batt_volt_to_steady': bool(8 & data),
