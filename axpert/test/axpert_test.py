@@ -6,13 +6,14 @@ from unittest.mock import patch, Mock
 from axpert.connector import Connector
 from axpert.protocol import CmdSpec
 from axpert.main import (
-    Status, parse_response_status, execute
+    Status, parse_response_status, execute, log
 )
 
 
 class MockConnector(Connector):
-    def __init__(self, devices=None):
+    def __init__(self, *args, **kwargs):
         self.write_buffer = []
+        super(MockConnector, self).__init__(*args, **kwargs)
 
     def read(self, size):
         return 'X' * size

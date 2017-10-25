@@ -5,6 +5,7 @@ from unittest.mock import patch
 from axpert.cmd_parser import (find_cmd, validate_args, parse_args)
 from axpert.protocol import CmdSpec
 
+
 @pytest.mark.parametrize(
     'cmd_data, expected', [
         ({'cmd_1': True}, CmdSpec(code='A', size=1, json=None, val=None)),
@@ -20,6 +21,7 @@ def test_find_cmd(cmd_data, expected):
     }
     with patch('axpert.cmd_parser.CMD_REL', MOCK_CMD_REL):
         assert find_cmd(cmd_data) == expected
+
 
 @pytest.mark.parametrize(
     'args_data, exit_val', [
@@ -37,16 +39,16 @@ def test_validate_args(args_data, exit_val):
 
 @pytest.mark.parametrize(
     'mock_parse_args, expected', [
-    ({'cmd': 'QQQ', 'size': 120, 'serial': True,
-      'usb': False, 'devices': None, 'value': '33.3',
-      'output_format': 'raw', 'daemonize':False},
-     {'cmd': CmdSpec(code='QQQ', size=120, val='33.3', json=None),
-      'serial': True, 'usb': False}),
-     ({'info': True, 'serial': False, 'usb': True,
-       'devices': None, 'value': None, 'size': None,
-       'output_format':'raw', 'daemonize':False},
-      {'cmd': CmdSpec(code='QPAS', size=66, val=None, json=None),
-       'serial': False, 'usb': True})
+       ({'cmd': 'QQQ', 'size': 120, 'serial': True,
+         'usb': False, 'devices': None, 'value': '33.3',
+         'output_format': 'raw', 'daemonize': False, 'verbose': False},
+        {'cmd': CmdSpec(code='QQQ', size=120, val='33.3', json=None),
+         'serial': True, 'usb': False}),
+       ({'info': True, 'serial': False, 'usb': True,
+         'devices': None, 'value': None, 'size': None,
+         'output_format': 'raw', 'daemonize': False, 'verbose': False},
+        {'cmd': CmdSpec(code='QPAS', size=66, val=None, json=None),
+         'serial': False, 'usb': True})
     ]
 )
 def test_parse_args(mock_parse_args, expected):
@@ -57,8 +59,10 @@ def test_parse_args(mock_parse_args, expected):
     class MockArgParser():
         def __init__(self, *args, **kwargs):
             pass
+
         def add_argument(self, *args, **kwargs):
             pass
+
         def parse_args(self):
             for k, v in mock_parse_args.items():
                 setattr(self, k, v)
@@ -70,5 +74,3 @@ def test_parse_args(mock_parse_args, expected):
         assert isinstance(response, dict)
         for expected_k, expected_v in expected.items():
             assert response[expected_k] == expected_v
-
-

@@ -63,7 +63,10 @@ def parse_args():
         '--daemon', dest='daemonize', action='store_true',
         help='', default=False
     )
-
+    parser.add_argument(
+        '--verbose', dest='verbose', action='store_true',
+        help='Verbose debug data', default=False
+    )
 
     args = vars(parser.parse_args())
     validate_args(args)
@@ -79,5 +82,6 @@ def parse_args():
         'cmd': cmd_data, 'devices': args['devices'],
         'serial': args['serial'], 'usb': args['usb'],
         'format': args['output_format'],
-        'daemonize': args['daemonize']
+        'daemonize': args['daemonize'],
+        'verbose': args['verbose']
     }

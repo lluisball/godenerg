@@ -9,15 +9,20 @@ connector_registry = {
 
 class Connector(object):
 
-    def __init__(self, devices=None):
+    def __init__(self, devices=None, log=None):
         self.devices = devices
+        self.log = log
 
     def __enter__(self):
+        self.log.debug('Opening device...')
         self.open()
+        self.log.debug('Device opened!')
         return self
 
     def __exit__(self, *args):
+        self.log.debug('Closing device...')
         self.close()
+        self.log.debug('Device closed!')
 
     def write(self, data):
         raise NotImplementedError(IMPLEMENT)

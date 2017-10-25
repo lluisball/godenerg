@@ -1,6 +1,6 @@
 import hidraw
 
-from connector import (Connector, IMPLEMENT)
+from connector import (Connector)
 
 
 class USBConnector(Connector):
@@ -11,7 +11,7 @@ class USBConnector(Connector):
         data = ''
         while True:
             data += ''.join(map(chr, self.dev.read(size)))
-            if not data or '\r' in data or len(data)>=size:
+            if not data or '\r' in data or len(data) >= size:
                 break
         return data
 
@@ -21,8 +21,8 @@ class USBConnector(Connector):
                 self.dev = hidraw.device()
                 self.dev.open_path(device.encode())
                 return
-            except ValueError:
-                pass
+            except Exception as e:
+                self.log.error(e)
 
     def close(self):
         self.dev.close()

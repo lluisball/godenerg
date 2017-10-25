@@ -2,15 +2,16 @@ from collections import namedtuple
 from json import dumps as json_dumps
 
 """
-b'(000.0 00.0 230.0 50.0 0184 0071 003 404 50.10 000 079 0049 0000 000.0 00.00 00001 01010000 00 00 00000 010\x1d\xc2\xb9\r\x00\x00'
+b'(000.0 00.0 230.0 50.0 0184 0071 003 404 50.10 000 079 0049 0000 000.0 00.00 00001 01010000 00 00 00000 010\x1d\xc2\xb9\r\x00\x00' # noqa
 """
 
 
-CmdSpec=namedtuple('CmdSpec', ['code', 'size', 'val', 'json'])
+CmdSpec = namedtuple('CmdSpec', ['code', 'size', 'val', 'json'])
 
 SOLAR_CHARGING = 'solar_charging'
 AC_CHARGING = 'ac_charging'
 NOT_CHARGING = 'not_charging'
+
 
 def parse_device_status(raw_status):
     charge_sources = {
@@ -38,12 +39,12 @@ def typer(frmt):
 
     for frm, type_fnx in types.items():
         if frm in frmt:
-            return lambda txt:type_fnx(frmt % type_fnx(txt))
+            return lambda txt: type_fnx(frmt % type_fnx(txt))
 
     return lambda txt: txt % frmt
 
 
-def status_json_formatter(raw, ser=True):
+def status_json_formatter(raw, serialize=True):
     to_float = typer('%.2f')
     to_int = typer('%d')
     to_str = typer('%s')
@@ -58,7 +59,7 @@ def status_json_formatter(raw, ser=True):
         ('pv_amps', to_int), ('pv_volts', to_float),
         ('batt_volt_scc', to_float), ('batt_discharge_amps', to_int),
         ('raw_status', to_str),
-        ('mask_b',to_int), ('mask_c', to_int),
+        ('mask_b', to_int), ('mask_c', to_int),
         ('pv_watts', to_int), ('mask_d', to_int)
     )
 
@@ -68,20 +69,20 @@ def status_json_formatter(raw, ser=True):
         label: formatter(token)
         for (label, formatter), token in zip(structure, raw_tokens)
     }
-    
+
     struct = {**data, **parse_device_status(data['raw_status'])}
-    return json_dumps(struct) if ser else struct
+    return json_dumps(struct) if serialize else struct
 
 
-def operation_json_formatter(raw, ser=True):
+def operation_json_formatter(raw, serialize=True):
     modes = {
         'P': 'PM', 'S': 'SB',
         'L': 'LN', 'B': 'BT',
         'F': 'FA', 'H': 'PS'
     }
-    mode_code = raw[1] 
+    mode_code = raw[1]
     data = {'mode': modes.get(mode_code, '00')}
-    return json_dumps(data) if ser else data
+    return json_dumps(data) if serialize else data
 
 
 CMD_REL = {
@@ -94,4 +95,3 @@ CMD_REL = {
         json=operation_json_formatter
     )
 }
-

@@ -20,9 +20,11 @@ def serial_reconnecter(fnx):
                 # Serial operation can raise type error on
                 # connection lost, try reconnecting after
                 # sleeping for a bit
+                self.log.error('Error connecting to serial device')
                 sleep(SLEEP_BETWEEN_RETRIES)
-        print(
-            '\n[SerialConnector] Could not connect to the device'
+
+        self.log.error(
+            '[SerialConnector] Could not connect to the device'
             ' trough specified devices/s %s' % ', '.join(self.devices)
         )
         exit(1)

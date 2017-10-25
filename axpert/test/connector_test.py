@@ -10,6 +10,7 @@ from axpert.connector import resolve_connector
 class MockConnectorA():
     pass
 
+
 class MockConnectorB():
     pass
 
@@ -41,7 +42,7 @@ def test_serial_reconnect():
             patch('axpert.connector_serial.sleep') as mock_sleep,            \
             patch('axpert.connector_serial.exit') as mock_exit:
 
-        with SerialConnector(devices=['/dev/ttyUSB0']) as connector:
+        with SerialConnector(devices=['/dev/ttyUSB0'], log=Mock()) as connector:
             # Proper read
             res = connector.read(20)
             assert res and res == 'a' * 20
@@ -67,6 +68,4 @@ def test_resolve_connector():
         assert connector_b.__name__ == MockConnectorB.__name__
 
         bad_connector = resolve_connector({'con_c': True})
-        assert bad_connector == None
-
-
+        assert bad_connector is None
