@@ -24,6 +24,7 @@ from axpert.protocol import CMD_REL                             # noqa
 from axpert.http_handler import create_base_remote_cmd_handler  # noqa
 
 
+RESET_SERIAL_SLEEP = 60
 FORMAT = '[%(asctime)s] %(message)s'
 ENCODING = 'utf-8'
 
@@ -139,7 +140,8 @@ def run_as_daemon(args):
         start_data_logger(connector, cmd)
 
         while True:
-            sleep(1)
+            sleep(RESET_SERIAL_SLEEP)
+            connector.open()
 
 
 def setup_logger():
