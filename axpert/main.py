@@ -151,7 +151,7 @@ if __name__ == '__main__':
     log.setLevel(logging.DEBUG if args['verbose'] else logging.INFO)
 
     if args['daemonize']:
-        #with daemon.DaemonContext():
-        run_as_daemon(args)
+        with daemon.DaemonContext():
+            run_as_daemon(args)
     else:
         run_cmd(args)
