@@ -133,8 +133,8 @@ def run_as_daemon(args):
     cmd = args['cmd']
     log.info('Starting Godenerg as daemon')
 
-    with Connector(devices=args['devices']) as connector:
-        start_http_server(connector, cmd)
+    with Connector(devices=args['devices'], log=log) as connector:
+        start_http_server(connector)
         start_process_executer(connector, cmd)
         start_data_logger(connector, cmd)
 
@@ -151,7 +151,7 @@ if __name__ == '__main__':
     log.setLevel(logging.DEBUG if args['verbose'] else logging.INFO)
 
     if args['daemonize']:
-        with daemon.DaemonContext():
-            run_as_daemon(args)
+        #with daemon.DaemonContext():
+        run_as_daemon(args)
     else:
         run_cmd(args)

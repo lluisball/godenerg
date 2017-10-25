@@ -20,9 +20,7 @@ def create_base_remote_cmd_handler(executor, connector, cmds):
 def json_response(fnx):
     def _inner(*args, **kwargs):
         self = args[0]
-        self.send_header('Content-type', 'application/json')
-        self.end_headers()
-
+    
         try:
             response = fnx(*args, **kwargs)
             self.send_response(200)
@@ -35,9 +33,14 @@ def json_response(fnx):
             self.send_response(500)
             response = dict(error=str(e))
 
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+
         return self.wfile.write(
             json_dumps(response).encode()
         )
+
+    return _inner
 
 
 class BaseRemoteCommandsHandler(BaseHTTPRequestHandler):
@@ -51,11 +54,11 @@ class BaseRemoteCommandsHandler(BaseHTTPRequestHandler):
         route = parsed_path.path
         if route not in self.routes:
             self.send_response(404)
-            self.wfile.write('Route not found')
+            self.wfile.write(b'Route not found')
         else:
             route_fnx = getattr(self, self.routes[route])
-            self.wfile.write(route_fnx(parse_qs(parsed_path.query)))
-
+            route_fnx(parse_qs(parsed_path.query))
+            
     def execute_cmd(self, cmd_name):
         return self.cmds[cmd_name].json(
             self.executor(self.connector, self.cmds[cmd_name]).data,
@@ -86,7 +89,7 @@ class BaseRemoteCommandsHandler(BaseHTTPRequestHandler):
             )
 
         # If we are ask to merge (merge=1 in QS) or we have a single command.
-        if 'merge' in req and req['merge'] == '1' or len(req['cmd']) == 1:
+        if ('merge' in req and req['merge'][0] == '1') or len(req['cmd']) == 1:
             data = (self.execute_cmd(cmd) for cmd in req['cmd'])
             return reduce(
                 lambda merged, item: merged.update(item) or merged,
