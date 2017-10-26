@@ -7,7 +7,7 @@ from struct import pack
 from collections import namedtuple
 from enum import IntEnum
 from crc16 import crc16xmodem
-from time import sleep
+from time import sleep, time
 
 from http.server import HTTPServer
 from threading import Thread, Lock
@@ -24,18 +24,15 @@ from axpert.protocol import CMD_REL                             # noqa
 from axpert.http_handler import create_base_remote_cmd_handler  # noqa
 
 
-RESET_SERIAL_SLEEP = 60
+# Reset HTTP Server each X in seconds
+RESET_HTTP_SLEEP = 60 * 10 
+
 FORMAT = '[%(asctime)s] %(message)s'
 ENCODING = 'utf-8'
 
 NAK, ACK = 'NAK', 'ACK'
 
 Response = namedtuple('Response', ['status', 'data'])
-logging.basicConfig(
-    format=FORMAT, filename='{}/gonederg.log'.format(root_dir)
-)
-log = logging.getLogger('gonederg')
-
 
 class Status(IntEnum):
     OK = 1
@@ -99,20 +96,25 @@ def run_cmd(args):
             print('\n')
 
 
+def reseteable_http_server(connector):
+    http_handler = create_base_remote_cmd_handler(
+        atomic_execute, connector, CMD_REL
+    )
+    while True: 
+        server = HTTPServer(('', 8889), http_handler)
+        server.server_activate()
+        last = time() 
+        while (last + RESET_HTTP_SLEEP) > time():
+            server.handle_request()
+        server.server_close()
+        log.info('HTTP server reset')
+
+
 def start_http_server(connector):
     log.info('Starting HTTP server')
-
-    server = HTTPServer(
-        ('', 8889),
-        create_base_remote_cmd_handler(
-            atomic_execute, connector, CMD_REL
-        )
-    )
-    thread = Thread(target=server.serve_forever)
-    thread.daemon = True
+    thread = Thread(target=reseteable_http_server, args=[connector])
     thread.start()
     log.info('HTTP server started')
-
 
 def start_process_executer(connector, cmd):
     log.info('Starting process executer')
@@ -135,25 +137,24 @@ def run_as_daemon(args):
     log.info('Starting Godenerg as daemon')
 
     with Connector(devices=args['devices'], log=log) as connector:
-        start_http_server(connector)
+        http_server = start_http_server(connector)
         start_process_executer(connector, cmd)
         start_data_logger(connector, cmd)
 
         while True:
-            sleep(RESET_SERIAL_SLEEP)
-            connector.open()
-
-
-def setup_logger():
-    return log
+            sleep(1)
 
 
 if __name__ == '__main__':
     args = parse_args()
-    log.setLevel(logging.DEBUG if args['verbose'] else logging.INFO)
 
     if args['daemonize']:
-        #with daemon.DaemonContext() as c:
-        run_as_daemon(args)
+        with daemon.DaemonContext() as c:
+            logging.basicConfig(
+                format=FORMAT, filename='{}/godenerg.log'.format(root_dir)
+            )
+            log = logging.getLogger('godenerg')
+            log.setLevel(logging.DEBUG if args['verbose'] else logging.INFO)
+            run_as_daemon(args)
     else:
         run_cmd(args)
