@@ -19,7 +19,7 @@ I will test on serial connections.
  ```
  > python3 axpert/main.py --usb -d /dev/hidraw0 --status --json
  ```
-code:: javascript
+.. code:: javascript
     {"ssc_firmware_updated": false, "grid_volt": 0.0, "raw_status": "01010000", "batt_volt": 49.7, "ac_volt": 229.9, "batt_capacity": 75, "configuration_changed": true, "pv_amps": 0, "bus_volt": 400.0, "ac_freq": 50.0, "ac_va": 298, "mask_d": 10, "batt_charge_amps": 0, "batt_volt_scc": 0.0, "load_status": true, "sbu_priority_version": false, "pv_volts": 0.0, "temp": 45, "load_percent": 6.0, "charge_source": ["not_charging"], "batt_discharge_amps": 5, "pv_watts": 0, "batt_volt_to_steady": false, "mask_c": 0, "grid_freq": 0.0, "mask_b": 0, "ac_watt": 241}
 
  ### Get operation mode (QMOD command):
@@ -36,7 +36,7 @@ code:: javascript
 
 ```
 
-code:: javascript
+.. code:: javascript
 
     {"mode": "BT"}
 
