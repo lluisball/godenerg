@@ -20,27 +20,28 @@ processes to bypass the crappy firmware the axpert has.
 
 Over the local network:
 
-    ```
-    http://machine_ip:8889/cmds?cmd=status
-    ```
-    or
+```
+http://machine_ip:8889/cmds?cmd=status
+```
 
-    ```
-    http://machine_ip:8889/cmds?cmd=operation_mode
-    ```
+or
 
-    or
+```
+http://machine_ip:8889/cmds?cmd=operation_mode
+```
 
-    ```
-    http://machine_ip:8889/cmds?cmd=operation_mode&cmd=status
-    ```
+or
 
-    or
+```
+http://machine_ip:8889/cmds?cmd=operation_mode&cmd=status
+```
 
-    ```
-    http://machine_ip:8889/cmds?cmd=operation_mode&cmd=status&merge=1
-    (to merge the 2 json nodes into a single node)
-    ```
+or
+
+```
+http://machine_ip:8889/cmds?cmd=operation_mode&cmd=status&merge=1
+```
+(to merge the 2 json nodes into a single node)
 
 ## cmd examples
 
