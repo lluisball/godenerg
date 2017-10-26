@@ -4,6 +4,43 @@ Atersa / Axpert Inverter python library / interface / tool
 So far tested on usb connections, whenever I get my hands on a usb to serial adapter
 I will test on serial connections.
 
+## Testing:
+pytest -v --pyargs axpert
+
+
+## Run as daemon
+
+For now this starts a http server that allows quering of commands.
+The idea is for the daemon to also do datalogging and dynamic configuration
+processes to bypass the crappy firmware the axpert has.
+
+```
+ > python3 axpert/main.py --usb -d /dev/hidraw0 --deamon
+```
+
+Over the local network:
+
+    ```
+    http://machine_ip:8889/cmds?cmd=status
+    ```
+    or
+
+    ```
+    http://machine_ip:8889/cmds?cmd=operation_mode
+    ```
+
+    or
+
+    ```
+    http://machine_ip:8889/cmds?cmd=operation_mode&cmd=status
+    ```
+
+    or
+
+    ```
+    http://machine_ip:8889/cmds?cmd=operation_mode&cmd=status&merge=1
+    (to merge the 2 json nodes into a single node)
+    ```
 
 ## cmd examples
 
@@ -43,5 +80,4 @@ I will test on serial connections.
  (ACK
  ```
 
-## Testing:
-pytest -v --pyargs axpert
+
