@@ -77,8 +77,17 @@ http://machine_ip:8889/cmds?cmd=operation_mode&cmd=status&merge=1
 
  ### Change Float Voltage to 53.0 V
 
+ ```
  > python3 axpert/main.py --usb -d /dev/hidraw0 --cmd PBFT -v 53.0  -s 8
  (ACK
  ```
+
+ ### Change Utility MAX charge current to 10 amps for first paralel device
+
+ ```
+ > python3 axpert/main.py --usb -d /dev/hidraw0 --cmd MCHGC -v 010 -s 8 
+ (ACK
+ ```
+
 
 
