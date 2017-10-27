@@ -105,7 +105,11 @@ def reseteable_http_server(connector):
         server.server_activate()
         last = time() 
         while (last + RESET_HTTP_SLEEP) > time():
-            server.handle_request()
+            try:
+                server.handle_request()
+            except Exception as e:
+                log.error(e)
+
         server.server_close()
         log.info('HTTP server reset')
 
