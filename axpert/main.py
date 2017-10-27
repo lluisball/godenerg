@@ -157,4 +157,13 @@ if __name__ == '__main__':
             log.setLevel(logging.DEBUG if args['verbose'] else logging.INFO)
             run_as_daemon(args)
     else:
+        # TODO: must sort out this duplicity issue with logging.
+        # if logger is out of deamonizer context, daemon does not work
+        # must investigate
+        logging.basicConfig(
+                format=FORMAT, filename='{}/godenerg.log'.format(root_dir)
+        )
+        log = logging.getLogger('godenerg')
+        log.setLevel(logging.DEBUG if args['verbose'] else logging.INFO)
+
         run_cmd(args)
