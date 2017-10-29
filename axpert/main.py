@@ -3,6 +3,8 @@ import os
 import sys
 import daemon
 
+from urllib.request import urlopen
+from socket import timeout
 from struct import pack
 from collections import namedtuple
 from enum import IntEnum
@@ -24,11 +26,12 @@ from axpert.protocol import CMD_REL                             # noqa
 from axpert.http_handler import create_base_remote_cmd_handler  # noqa
 
 
-# Reset HTTP Server each X in seconds
-RESET_SLEEP = 150
+WATCHDOG_URL = 'http://localhost:8889/cmds?cmd=operation_mode'
+WATCHDOG_MAX_TIMEOUT = 5
+WATCHDOG_INTERVAL = 10
 
 FORMAT = '[%(asctime)s] %(message)s'
-LOG_FILE = filename='{}/godenerg.log'.format(root_dir)
+LOG_FILE = '{}/godenerg.log'.format(root_dir)
 ENCODING = 'utf-8'
 
 NAK, ACK = 'NAK', 'ACK'
@@ -97,33 +100,28 @@ def run_cmd(args):
             print('\n')
 
 
-def reseteable_http_server(stop_event, start_event, connector):
+def reseteable_http_server(connector):
     http_handler = create_base_remote_cmd_handler(
         atomic_execute, connector, CMD_REL
     )
     server = HTTPServer(('', 8889), http_handler)
     server.server_activate()
-    while not stop_event.is_set():
+    while True:
         try:
             server.handle_request()
         except Exception as e:
             log.error(e)
 
-    server.server_close()
-    start_event.set()     # we have stopped ok, re-start is now possible
-    stop_event.clear()    # we have stopped ok, clear event
 
-    log.info('HTTP server stopped')
-
-
-def start_http_server(stop_event, start_event, connector):
+def start_http_server(connector):
     log.info('Starting HTTP server')
     thread = Thread(
         target=reseteable_http_server,
-        args=[stop_event, start_event, connector]
+        args=[connector]
     )
     thread.start()
     log.info('HTTP server started')
+    return thread
 
 
 def start_process_executer(connector, cmd):
@@ -141,34 +139,52 @@ def atomic_execute(connector, cmd):
         return execute(connector, cmd)
 
 
+def watchdog(http_server_fail_event):
+    try:
+        while True:
+            sleep(WATCHDOG_INTERVAL)
+            if not http_server_fail_event.is_set():
+                try:
+                    response = urlopen(
+                        WATCHDOG_URL, timeout = WATCHDOG_MAX_TIMEOUT
+                    )
+                    response.read()
+                    log.debug('Watchdog HTTP server call OK')
+                except timeout:
+                    http_server_fail_event.set()
+            else:
+                log.debug('HTTP server fail event set, cannot watchdog')
+    except Exception as e:
+        log.error(e)
+
+def start_watchdog(http_server_fail_event):
+    log.info('Starting Watchdog')
+    thread = Thread(
+        target=watchdog,
+        args=[http_server_fail_event]
+    )
+    thread.start()
+    log.info('Watchdog started')
+
+
 def run_as_daemon(args):
-    """
-    The Axpert inverter does some funny vodoo with USB,
-    restart mechanics and dependent threads signaling and
-    restart, in order to reset connections.
-    """
     Connector = resolve_connector(args)
     cmd = args['cmd']
     log.info('Starting Godenerg as daemon')
 
-    last = time()
-    http_stop_event, http_start_event = Event(), Event()
-    http_start_event.set()
+    http_server_fail_event = Event()
 
-    while True:
-        with Connector(devices=args['devices'], log=log) as connector:
-            http_start_event.wait()
-            http_server = start_http_server(
-               http_stop_event, http_start_event, connector
-            )
-            http_start_event.clear()
-
-            while (last + RESET_SLEEP) > time():
-                sleep(1)
-            http_stop_event.set()
-            last = time()
-
-        log.info('Reseting Comms and HTTP')
+    with Connector(devices=args['devices'], log=log) as connector:
+        http_server = start_http_server(connector)
+        start_watchdog(http_server_fail_event)
+        
+        while True:
+            if http_server_fail_event.is_set():
+                log.error('HTTP Server fail event')
+                http_server.join(timeout=1)
+                http_server = start_http_server(connector)
+                http_server_fail_event.clear()
+            sleep(1)
 
 
 if __name__ == '__main__':
@@ -177,7 +193,7 @@ if __name__ == '__main__':
 
     if args['daemonize']:
         with daemon.DaemonContext() as c:
-            logging.basicConfig(format=FORMAT, LOG_FILE)
+            logging.basicConfig(format=FORMAT, filename=LOG_FILE)
             log = logging.getLogger('godenerg')
             log.setLevel(log_level)
             run_as_daemon(args)
