@@ -25,9 +25,10 @@ from axpert.http_handler import create_base_remote_cmd_handler  # noqa
 
 
 # Reset HTTP Server each X in seconds
-RESET_SLEEP = 150 
+RESET_SLEEP = 150
 
 FORMAT = '[%(asctime)s] %(message)s'
+LOG_FILE = filename='{}/godenerg.log'.format(root_dir)
 ENCODING = 'utf-8'
 
 NAK, ACK = 'NAK', 'ACK'
@@ -102,22 +103,23 @@ def reseteable_http_server(stop_event, start_event, connector):
     )
     server = HTTPServer(('', 8889), http_handler)
     server.server_activate()
-    while not stop_event.is_set(): 
+    while not stop_event.is_set():
         try:
             server.handle_request()
         except Exception as e:
             log.error(e)
 
     server.server_close()
-    start_event.set()
-    stop_event.clear()
+    start_event.set()     # we have stopped ok, re-start is now possible
+    stop_event.clear()    # we have stopped ok, clear event
+
     log.info('HTTP server stopped')
 
 
 def start_http_server(stop_event, start_event, connector):
     log.info('Starting HTTP server')
     thread = Thread(
-        target=reseteable_http_server, 
+        target=reseteable_http_server,
         args=[stop_event, start_event, connector]
     )
     thread.start()
@@ -140,49 +142,47 @@ def atomic_execute(connector, cmd):
 
 
 def run_as_daemon(args):
+    """
+    The Axpert inverter does some funny vodoo with USB,
+    restart mechanics and dependent threads signaling and
+    restart, in order to reset connections.
+    """
     Connector = resolve_connector(args)
     cmd = args['cmd']
     log.info('Starting Godenerg as daemon')
 
-    last = time() 
-    stop_event, start_event = Event(), Event()
-    start_event.set()
+    last = time()
+    http_stop_event, http_start_event = Event(), Event()
+    http_start_event.set()
 
     while True:
         with Connector(devices=args['devices'], log=log) as connector:
-            start_event.wait()
+            http_start_event.wait()
             http_server = start_http_server(
-                stop_event, start_event, connector
+               http_stop_event, http_start_event, connector
             )
-            start_event.clear()
+            http_start_event.clear()
 
             while (last + RESET_SLEEP) > time():
                 sleep(1)
-            stop_event.set()
+            http_stop_event.set()
             last = time()
 
         log.info('Reseting Comms and HTTP')
-            
+
 
 if __name__ == '__main__':
     args = parse_args()
+    log_level = logging.DEBUG if args['verbose'] else logging.INFO
 
     if args['daemonize']:
         with daemon.DaemonContext() as c:
-            logging.basicConfig(
-                format=FORMAT, filename='{}/godenerg.log'.format(root_dir)
-            )
+            logging.basicConfig(format=FORMAT, LOG_FILE)
             log = logging.getLogger('godenerg')
-            log.setLevel(logging.DEBUG if args['verbose'] else logging.INFO)
+            log.setLevel(log_level)
             run_as_daemon(args)
     else:
-        # TODO: must sort out this duplicity issue with logging.
-        # if logger is out of deamonizer context, daemon does not work
-        # must investigate
-        logging.basicConfig(
-            format=FORMAT, filename='{}/godenerg.log'.format(root_dir)
-        )
         log = logging.getLogger('godenerg')
-        log.setLevel(logging.DEBUG if args['verbose'] else logging.INFO)
-
+        log.setLevel(log_level)
+        log.addHandler(logging.StreamHandler(sys.stdout))
         run_cmd(args)
