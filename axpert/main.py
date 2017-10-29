@@ -25,7 +25,7 @@ from axpert.http_handler import create_base_remote_cmd_handler  # noqa
 
 
 # Reset HTTP Server each X in seconds
-RESET_SLEEP = 60 * 1
+RESET_SLEEP = 150 
 
 FORMAT = '[%(asctime)s] %(message)s'
 ENCODING = 'utf-8'
@@ -96,27 +96,29 @@ def run_cmd(args):
             print('\n')
 
 
-def reseteable_http_server(stop_event, connector):
+def reseteable_http_server(stop_event, start_event, connector):
     http_handler = create_base_remote_cmd_handler(
         atomic_execute, connector, CMD_REL
     )
     server = HTTPServer(('', 8889), http_handler)
     server.server_activate()
-    while not stop_event.isSet(): 
+    while not stop_event.is_set(): 
         try:
             server.handle_request()
         except Exception as e:
             log.error(e)
 
     server.server_close()
+    start_event.set()
+    stop_event.clear()
     log.info('HTTP server stopped')
 
 
-def start_http_server(stop_event, connector):
+def start_http_server(stop_event, start_event, connector):
     log.info('Starting HTTP server')
-    stop_event.clear()
     thread = Thread(
-        target=reseteable_http_server, args=[stop_event, connector]
+        target=reseteable_http_server, 
+        args=[stop_event, start_event, connector]
     )
     thread.start()
     log.info('HTTP server started')
@@ -141,19 +143,25 @@ def run_as_daemon(args):
     Connector = resolve_connector(args)
     cmd = args['cmd']
     log.info('Starting Godenerg as daemon')
-    stop_event = Event()
+
     last = time() 
+    stop_event, start_event = Event(), Event()
+    start_event.set()
 
     while True:
         with Connector(devices=args['devices'], log=log) as connector:
-            http_server = start_http_server(stop_event, connector)
+            start_event.wait()
+            http_server = start_http_server(
+                stop_event, start_event, connector
+            )
+            start_event.clear()
+
             while (last + RESET_SLEEP) > time():
                 sleep(1)
-            last = time()
             stop_event.set()
-            connector.close()
-            log.info('Reseting Comms and HTTP')
-            sleep(0.5)
+            last = time()
+
+        log.info('Reseting Comms and HTTP')
             
 
 if __name__ == '__main__':
