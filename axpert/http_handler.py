@@ -4,12 +4,13 @@ from json import dumps as json_dumps
 from functools import reduce
 
 
-def create_base_remote_cmd_handler(executor, connector, cmds):
+def create_base_remote_cmd_handler(connector_cls, devices, executor, cmds):
 
     class RemoteCommandsHandler(BaseRemoteCommandsHandler):
 
         def __init__(self, *args, **kwargs):
-            self.connector = connector
+            self.connector_cls = connector_cls
+            self.devices = devices
             self.executor = executor
             self.cmds = cmds
             super(RemoteCommandsHandler, self).__init__(*args, **kwargs)
@@ -61,7 +62,9 @@ class BaseRemoteCommandsHandler(BaseHTTPRequestHandler):
 
     def execute_cmd(self, cmd_name):
         return self.cmds[cmd_name].json(
-            self.executor(self.connector, self.cmds[cmd_name]).data,
+            self.executor(
+                self.connector_cls, self.devices, self.cmds[cmd_name]
+            ).data,
             serialize=False
         )
 

@@ -4,12 +4,14 @@ import sys
 import daemon
 
 from urllib.request import urlopen
-from socket import timeout
+from urllib.error import HTTPError
+
 from struct import pack
 from collections import namedtuple
 from enum import IntEnum
 from crc16 import crc16xmodem
 from time import sleep, time
+from signal import SIGKILL
 
 from http.server import HTTPServer
 from threading import Thread, Lock, Event
@@ -27,7 +29,7 @@ from axpert.http_handler import create_base_remote_cmd_handler  # noqa
 
 
 WATCHDOG_URL = 'http://localhost:8889/cmds?cmd=operation_mode'
-WATCHDOG_MAX_TIMEOUT = 5
+WATCHDOG_MAX_TIMEOUT = 10 
 WATCHDOG_INTERVAL = 10
 WATCHDOG_CONNECTOR_RETRY = 5
 
@@ -101,9 +103,9 @@ def run_cmd(args):
             print('\n')
 
 
-def reseteable_http_server(connector):
+def reseteable_http_server(connector_cls, devices):
     http_handler = create_base_remote_cmd_handler(
-        atomic_execute, connector, CMD_REL
+        connector_cls, devices, atomic_execute, CMD_REL
     )
     server = HTTPServer(('', 8889), http_handler)
     server.server_activate()
@@ -114,11 +116,11 @@ def reseteable_http_server(connector):
             log.error(e)
 
 
-def start_http_server(connector):
+def start_http_server(connector_cls, devices):
     log.info('Starting HTTP server')
     thread = Thread(
         target=reseteable_http_server,
-        args=[connector]
+        args=[connector_cls, devices]
     )
     thread.start()
     log.info('HTTP server started')
@@ -135,9 +137,10 @@ def start_data_logger(connector, cmd):
     log.info('Started data logger')
 
 
-def atomic_execute(connector, cmd):
+def atomic_execute(connector_cls, devices, cmd):
     with Lock():
-        return execute(connector, cmd)
+        with connector_cls(devices=devices, log=log) as connector: 
+            return execute(connector, cmd)
 
 
 def watchdog_http_server(fail_event):
@@ -146,88 +149,53 @@ def watchdog_http_server(fail_event):
             response = urlopen(WATCHDOG_URL, timeout = WATCHDOG_MAX_TIMEOUT)
             response.read()
             log.debug('Watchdog HTTP server call OK')
-        except timeout:
+        except HTTPError as he:
+            log.debug('Watchdog HTTP server call KO but got an answer')
+        except Exception as e:
             fail_event.set()
+            log.debug(
+               'Setting HTTP server fail event'
+            )
+            log.error(e)
     else:
         log.debug(
             'HTTP server fail event set, cannot watchdog'
             ' waiting to do http server watchdog'
         )
 
-def watchdog_connector(connector, fail_event=None):
-    cmd = CMD_REL['operation_mode']
 
-    try:
-        res = execute(connector, cmd)
-        if not res or res.status not Status.OK:
-            raise ValueError('Bad connector response value to watchdog query')
-        return True
-
-    except ValueError as ve:
-        if fail_event:
-            fail_event.set()
-        return False
-
-
-def watchdog(connector, connector_fail_event, http_server_fail_event):
+def watchdog(http_server_fail_event):
     try:
         while True:
             sleep(WATCHDOG_INTERVAL)
-            watchdog_connector(connector, connector_fail_event)
-            watchdog_http_server(http_server_fail_event)
+            watchdog_http_server(
+                http_server_fail_event
+            )
 
     except Exception as e:
         log.error(e)
 
 
-def start_watchdog(connector, connector_fail_event, http_server_fail_event):
+def start_watchdog(http_server_fail_event):
     log.info('Starting Watchdog')
     thread = Thread(
         target=watchdog,
-        args=[
-            connector,
-            connector_fail_event,
-            http_server_fail_event
-        ]
+        args=[http_server_fail_event]
     )
     thread.start()
     log.info('Watchdog started')
     return thread
 
 
-def check_http_server(connector, http_server, fail_event):
+def check_http_server(connector_cls, devices, http_server, fail_event):
     if not fail_event.is_set():
         return http_server
 
     log.error('HTTP Server fail event fired')
     http_server.join(timeout=1)
-    http_server = start_http_server(connector)
+    http_server = start_http_server(connector_cls, devices)
     fail_event.clear()
-
-
-def check_connector(connector, devices, fail_event):
-    if not fail_event.is_set():
-        return connector
-
-    log.error('Connector fail event fired')
-    retry = 0
-    while retry < WATCHDOG_CONNECTOR_RETRY:
-        try:
-            connector.close()
-        except:
-            pass
-
-        sleep(retry * 3)
-        connector = Connector(devices = devices, log=log)
-        connector.open()
-        sleep(0.25)
-        connector_ok = watchdog_connector(connector)
-        if connector_ok:
-            fail_event.clear()
-            return connector
-        retry += 1
-
-    return None
+    return http_server
 
 
 def connector_error_stop_daemon(daemon, http_server, watchdog):
@@ -235,50 +203,29 @@ def connector_error_stop_daemon(daemon, http_server, watchdog):
     log.error('Stopping daemon')
     http_server.join(timeout=0.1)
     watchdog.join(timeout=0.1)
-    daemon.terminate()
+    daemon.terminate(SIGKILL, None)
 
 
 def run_as_daemon(daemon, args):
-    Connector = resolve_connector(args)
+    connector_cls = resolve_connector(args)
     cmd = args['cmd']
     devices = args['devices']
     log.info('Starting Godenerg as daemon')
-
     http_server_fail_event = Event()
-    connector_fail_event = Event()
 
-    connector = Connector(devices=devices, log=log)
     try:
-        connector.open()
-        http_server = start_http_server(connector)
-        watchdog = start_watchdog(
-            connector, connector_fail_event, http_server_fail_event
-        )
+        http_server = start_http_server(connector_cls, devices)
+        watchdog = start_watchdog(http_server_fail_event)
 
         while True:
-            # Check connector, if we could not get a connector back
-            # stop the daemon. Nothing we can do without connector.
-            connector = check_connector(
-                connector, devices, connector_fail_event
-            )
-            if not connector:
-                connector_error_stop_daemon(daemon, http_server, watchdog)
-                break
-
-            # Check HTTP server, logger and task processor
+           # Check HTTP server, logger and task processor
             http_server = check_http_server(
-                connector, http_server, http_server_fail_event
+                connector_cls, devices, http_server, http_server_fail_event
             )
-
             sleep(1)
-
     except Exception as e:
         log.error(e)
-
-    finally:
-        if connector:
-            connector.close()
-
+    
 
 if __name__ == '__main__':
     args = parse_args()
