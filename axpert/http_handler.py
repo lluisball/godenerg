@@ -20,7 +20,7 @@ def create_base_remote_cmd_handler(executor, connector, cmds):
 def json_response(fnx):
     def _inner(*args, **kwargs):
         self = args[0]
-    
+
         try:
             response = fnx(*args, **kwargs)
             self.send_response(200)
@@ -58,7 +58,7 @@ class BaseRemoteCommandsHandler(BaseHTTPRequestHandler):
         else:
             route_fnx = getattr(self, self.routes[route])
             route_fnx(parse_qs(parsed_path.query))
-            
+
     def execute_cmd(self, cmd_name):
         return self.cmds[cmd_name].json(
             self.executor(self.connector, self.cmds[cmd_name]).data,
