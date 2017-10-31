@@ -3,19 +3,31 @@ from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 from json import dumps as json_dumps
 from functools import reduce
+from time import sleep
+from threading import Thread
 
-from settings import http_conf
-
+from axpert.settings import http_conf
 from axpert.protocol import CMD_REL
 
 
-def http_server_create(log, comms_executor):
+def http_server_create(log, stop_event, comms_executor):
     http_handler = create_base_remote_cmd_handler(comms_executor, CMD_REL)
     server = HTTPServer(('', http_conf['port']), http_handler)
-    server.server_activate()
+    try:
+        serve_forever = Thread(target=server.serve_forever)
+        serve_forever.start() 
+    except Exception as e:
+        log.error(e)
+
     while True:
         try:
-            server.handle_request()
+            if stop_event.is_set():
+                log.info('Shutting down http server')
+                server.shutdown()
+                log.info('http server stopped, clearing event')
+                stop_event.clear()
+                return
+            sleep(1)
         except Exception as e:
             log.error(e)
 

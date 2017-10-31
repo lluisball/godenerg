@@ -3,7 +3,7 @@ from time import sleep
 from datetime import datetime
 from json import dumps as json_dumps
 
-from settings import datalogger_conf
+from axpert.settings import datalogger_conf
 
 
 DT_FORMAT = '%Y%m%d%H%M%S'
@@ -38,13 +38,14 @@ CREATE_DB_STATEMENT = 'CREATE TABLE stats ({})'
 EXPECTED_TABLES = ('stats', )
 
 
-def ensure_db_structure(db_conn):
+def ensure_db_structure(log, db_conn):
     query = "SELECT name FROM sqlite_master WHERE type='table'"
     table_names = [row[0] for row in db_conn.cursor().execute(query)]
-    diff = set(EXPECTED_TABLES) - set(table_names)
-    if not diff:
+    if not set(EXPECTED_TABLES) - set(table_names):
+        log.debug('No difference in tables, not recreating')
         return
 
+    log.info('Tables not found, creating database structure')
     cursor = db_conn.cursor()
     cursor.execute(
         CREATE_DB_STATEMENT.format(
@@ -52,37 +53,47 @@ def ensure_db_structure(db_conn):
         )
     )
     db_conn.commit()
+    log.info('Database structure created')
 
 
-def save_datapoint(cursor, data):
-    data['datetime'] = int(datetime.now().strftime(DT_FORMAT))
-    column_values = [data[col_name] for col_name, _ in COLS]
-    column_vars = ', '.join('?' for _ in range(len(COLS)))
-    statement = 'INSERT INTO stats VALUES ({})'.format(column_vars)
-    cursor.execute(statement, column_values)
-
+def save_datapoint(log, cursor, data):
+    try:
+        log.debug('Saving datapoint')
+        data['datetime'] = int(datetime.now().strftime(DT_FORMAT))
+        column_values = [data[col_name] for col_name, _ in COLS]
+        column_vars = ', '.join('?' for _ in range(len(COLS)))
+        statement = 'INSERT INTO stats VALUES ({})'.format(column_vars)
+        log.debug(column_values)
+        cursor.execute(statement, column_values)
+    except Exception as e:
+        log.error('Error saving datapoint')
+        log.error(e)
 
 def datalogger_create(log, comms_executor, cmds):
 
     def _execute_cmd(cmd):
-        return cmd.json(
-            comms_executor(cmd).data, serialize=False
-        )
+        response = comms_executor(cmd)
+        return cmd.json(response.data, serialize=False)
 
-    INTERVAL = datalogger_conf['interval']
-    status_cmd, mode_cmd = cmds['status'], cmds['operation_mode']
+    try:
+        INTERVAL = datalogger_conf['interval']
+        status_cmd, mode_cmd = cmds['status'], cmds['operation_mode']
 
-    with connect(datalogger_conf['db_filename']) as db_conn:
-        ensure_db_structure(db_conn)
+        with connect(datalogger_conf['db_filename']) as db_conn:
+            ensure_db_structure(log, db_conn)
 
-        while True:
-            save_datapoint(
-                db_conn.cursor(),
-                {**_execute_cmd(status_cmd), **_execute_cmd(mode_cmd)}
-            )
-            db_conn.commit()
-            sleep(INTERVAL)
+            while True:
+                save_datapoint(
+                    log,
+                    db_conn.cursor(),
+                    {**_execute_cmd(status_cmd), **_execute_cmd(mode_cmd)}
+                )
+                db_conn.commit()
+                sleep(INTERVAL)
 
+    except Exception as e:
+        log.error('Exception in datalogger')
+        log.error(e)
 
 def get_range(from_dt, to_dt, extract_cols=None, as_json=False):
 
@@ -105,7 +116,3 @@ def get_range(from_dt, to_dt, extract_cols=None, as_json=False):
         return _process_rows(
             _process_cols(row) for row in cursor.fetchall()
         )
-
-
-if __name__ == '__main__':
-    datalogger_create(None, {'db_filename': 'test.db'}, None)

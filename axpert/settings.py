@@ -9,5 +9,6 @@ http_conf = {
 
 
 datalogger_conf = {
-    'db_filename': 'godenerg.db'
+    'db_filename': '/home/ups/godenerg/godenerg.db',
+    'interval': 15
 }

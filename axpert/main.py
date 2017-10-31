@@ -11,7 +11,6 @@ from signal import SIGKILL
 from threading import Thread, Lock, Event
 from datetime import datetime
 
-from settings import http_conf, logger_conf, datalogger_conf
 
 curr_dir = os.path.dirname(os.path.realpath(__file__))
 root_dir = os.path.abspath(os.path.join(curr_dir, '..'))
@@ -19,6 +18,7 @@ root_dir = os.path.abspath(os.path.join(curr_dir, '..'))
 if root_dir not in sys.path:
     sys.path.append(root_dir)
 
+from axpert.settings import http_conf, logger_conf, datalogger_conf
 from axpert.connector import resolve_connector                  # noqa
 from axpert.cmd_parser import parse_args                        # noqa
 from axpert.http_handler import http_server_create              # noqa
@@ -56,11 +56,11 @@ def run_cmd(args):
             log.error(response.data)
 
 
-def start_http_server(comms_executor):
+def start_http_server(stop_event, comms_executor):
     log.info('Starting HTTP server')
     thread = Thread(
         target=http_server_create,
-        args=[log, comms_executor]
+        args=[log, stop_event, comms_executor]
     )
     thread.start()
     log.info('HTTP server started')
@@ -83,11 +83,13 @@ def start_data_logger(comms_executor):
     return thread
 
 
-def atomic_execute(connector_cls, devices, cmd):
-    with Lock():
+def atomic_execute(comms_lock, connector_cls, devices, cmd):
+    try:
+        comms_lock.acquire()
         with connector_cls(devices=devices, log=log) as connector:
             return execute(log, connector, cmd)
-
+    finally:
+        comms_lock.release()
 
 def watchdog_http_server(fail_event):
     if not fail_event.is_set():
@@ -131,13 +133,15 @@ def start_watchdog(http_server_fail_event):
     return thread
 
 
-def check_http_server(comms_executor, http_server, fail_event):
+def check_http_server(comms_executor, http_server, fail_event, stop_event):
     if not fail_event.is_set():
         return http_server
 
     log.error('HTTP Server fail event fired')
-    http_server.join(timeout=1)
-    http_server = start_http_server(comms_executor)
+    stop_event.set()
+    while stop_event.is_set():
+        sleep(0.25)
+    http_server = start_http_server(stop_event, comms_executor)
     fail_event.clear()
     return http_server
 
@@ -155,17 +159,19 @@ def run_as_daemon(daemon, args):
     devices = args['devices']
     log.info('Starting Godenerg as daemon')
     http_server_fail_event = Event()
-
+    http_server_stop_event = Event()
+    comms_lock = Lock()
     try:
-        comms_executor = partial(atomic_execute, connector_cls, devices)
-        http_server = start_http_server(comms_executor)
+        comms_executor = partial(atomic_execute, comms_lock, connector_cls, devices)
+        http_server = start_http_server(http_server_stop_event, comms_executor)
 
         start_data_logger(comms_executor)
         start_watchdog(http_server_fail_event)
 
         while True:
             http_server = check_http_server(
-                comms_executor, http_server, http_server_fail_event
+                comms_executor, http_server, http_server_fail_event,
+                http_server_stop_event
             )
             sleep(1)
     except Exception as e:
