@@ -1,24 +1,69 @@
 from collections import namedtuple
 from json import dumps as json_dumps
+from struct import pack
+from crc16 import crc16xmodem
+from enum import IntEnum
 
 """
-b'(000.0 00.0 230.0 50.0 0184 0071 003 404 50.10 000 079 0049 0000 000.0 00.00 00001 01010000 00 00 00000 010\x1d\xc2\xb9\r\x00\x00' # noqa
 """
 
 
 CmdSpec = namedtuple('CmdSpec', ['code', 'size', 'val', 'json'])
+Response = namedtuple('Response', ['status', 'data'])
 
 SOLAR_CHARGING = 'solar_charging'
 AC_CHARGING = 'ac_charging'
 NOT_CHARGING = 'not_charging'
+NAK, ACK = 'NAK', 'ACK'
+
+
+class Status(IntEnum):
+    OK = 1
+    KO = 2
+    NN = 3
+
+
+def execute(log, connector, cmd):
+    value = cmd.val if cmd.val else ''
+    encoded_cmd = cmd.code.encode() + value.encode()
+    checksum = crc16xmodem(encoded_cmd)
+    request = encoded_cmd + pack('>H', checksum) + b'\r'
+
+    log.debug(
+        'Request {} done as "{}"'.format(
+            cmd, request
+        )
+    )
+
+    # No commands take more than 16 bytes
+    # Take first 8 and second 8 if any
+    connector.write(request[:8])
+    if len(request) > 8:
+        connector.write(request[8:])
+
+    response = connector.read(int(cmd.size))
+    log.debug('Response from connector to {} is:'.format(cmd))
+    log.debug(response)
+
+    return Response(data=response, status=parse_response_status(response))
+
+
+def parse_response_status(data):
+    if not data or (ACK not in data and NAK not in data):
+        return Status.NN
+    elif ACK in data:
+        return Status.OK
+    elif NAK in data:
+        return Status.KO
 
 
 def parse_device_status(raw_status):
-    charge_sources = {
-        0b101: AC_CHARGING,
-        0b110: SOLAR_CHARGING,
-        0b000: NOT_CHARGING
-    }
+    if not raw_status                           \
+            or not isinstance(raw_status, str)  \
+            or len(raw_status) < 8:
+        return {}
+
+    charge_sources = {0b101: AC_CHARGING, 0b110: SOLAR_CHARGING}
     data = int(raw_status, 2)
 
     return {
@@ -59,8 +104,8 @@ def status_json_formatter(raw, serialize=True):
         ('pv_amps', to_int), ('pv_volts', to_float),
         ('batt_volt_scc', to_float), ('batt_discharge_amps', to_int),
         ('raw_status', to_str),
-        ('mask_b', to_int), ('mask_c', to_int),
-        ('pv_watts', to_int), ('mask_d', to_int)
+        ('mask_b', to_str), ('mask_c', to_str),
+        ('pv_watts', to_int), ('mask_d', to_str)
     )
 
     # Ignore initial '(' and end 5 byte split

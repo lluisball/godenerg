@@ -6,11 +6,7 @@ import daemon
 from urllib.request import urlopen
 from urllib.error import HTTPError
 
-from struct import pack
-from collections import namedtuple
-from enum import IntEnum
-from crc16 import crc16xmodem
-from time import sleep, time
+from time import sleep
 from signal import SIGKILL
 
 from http.server import HTTPServer
@@ -24,61 +20,19 @@ if root_dir not in sys.path:
 
 from axpert.connector import resolve_connector                  # noqa
 from axpert.cmd_parser import parse_args                        # noqa
-from axpert.protocol import CMD_REL                             # noqa
 from axpert.http_handler import create_base_remote_cmd_handler  # noqa
+from axpert.protocol import (
+    CMD_REL, execute, Status
+)        # noqa
 
 
 WATCHDOG_URL = 'http://localhost:8889/cmds?cmd=operation_mode'
-WATCHDOG_MAX_TIMEOUT = 10 
+WATCHDOG_MAX_TIMEOUT = 10
 WATCHDOG_INTERVAL = 10
-WATCHDOG_CONNECTOR_RETRY = 5
 
 FORMAT = '[%(asctime)s] %(message)s'
 LOG_FILE = '{}/godenerg.log'.format(root_dir)
 ENCODING = 'utf-8'
-
-NAK, ACK = 'NAK', 'ACK'
-
-Response = namedtuple('Response', ['status', 'data'])
-
-class Status(IntEnum):
-    OK = 1
-    KO = 2
-    NN = 3
-
-
-def parse_response_status(data):
-    if not data or (ACK not in data and NAK not in data):
-        return Status.NN
-    elif ACK in data:
-        return Status.OK
-    elif NAK in data:
-        return Status.KO
-
-
-def execute(connector, cmd):
-    value = cmd.val if cmd.val else ''
-    encoded_cmd = cmd.code.encode() + value.encode()
-    checksum = crc16xmodem(encoded_cmd)
-    request = encoded_cmd + pack('>H', checksum) + b'\r'
-
-    log.debug(
-        'Request {} done as "{}"'.format(
-            cmd, request
-        )
-    )
-
-    # No commands take more than 16 bytes
-    # Take first 8 and second 8 if any
-    connector.write(request[:8])
-    if len(request) > 8:
-        connector.write(request[8:])
-
-    response = connector.read(int(cmd.size))
-    log.debug('Response from connector to {} is:'.format(cmd))
-    log.debug(response)
-
-    return Response(data=response, status=parse_response_status(response))
 
 
 def output_as_json(args):
@@ -91,19 +45,18 @@ def run_cmd(args):
     Connector = resolve_connector(args)
     with Connector(log=log, devices=args['devices']) as connector:
         cmd = args['cmd']
-        response = execute(connector, cmd)
+        response = execute(log, connector, cmd)
         if response.status == Status.OK or response.status == Status.NN:
             if output_as_json(args):
-                print(cmd.json(response.data))
+                log.info(cmd.json(response.data))
             else:
-                print(response.data)
+                log.info(response.data)
         elif response.status == Status.KO:
-            print("\nCommand not understood by inverter:\n")
-            print(response.data)
-            print('\n')
+            log.error("Command not understood by inverter:")
+            log.error(response.data)
 
 
-def reseteable_http_server(connector_cls, devices):
+def http_server_create(connector_cls, devices):
     http_handler = create_base_remote_cmd_handler(
         connector_cls, devices, atomic_execute, CMD_REL
     )
@@ -119,7 +72,7 @@ def reseteable_http_server(connector_cls, devices):
 def start_http_server(connector_cls, devices):
     log.info('Starting HTTP server')
     thread = Thread(
-        target=reseteable_http_server,
+        target=http_server_create,
         args=[connector_cls, devices]
     )
     thread.start()
@@ -139,23 +92,21 @@ def start_data_logger(connector, cmd):
 
 def atomic_execute(connector_cls, devices, cmd):
     with Lock():
-        with connector_cls(devices=devices, log=log) as connector: 
-            return execute(connector, cmd)
+        with connector_cls(devices=devices, log=log) as connector:
+            return execute(log, connector, cmd)
 
 
 def watchdog_http_server(fail_event):
     if not fail_event.is_set():
         try:
-            response = urlopen(WATCHDOG_URL, timeout = WATCHDOG_MAX_TIMEOUT)
+            response = urlopen(WATCHDOG_URL, timeout=WATCHDOG_MAX_TIMEOUT)
             response.read()
             log.debug('Watchdog HTTP server call OK')
         except HTTPError as he:
             log.debug('Watchdog HTTP server call KO but got an answer')
         except Exception as e:
             fail_event.set()
-            log.debug(
-               'Setting HTTP server fail event'
-            )
+            log.debug('Setting HTTP server fail event')
             log.error(e)
     else:
         log.debug(
@@ -208,24 +159,22 @@ def connector_error_stop_daemon(daemon, http_server, watchdog):
 
 def run_as_daemon(daemon, args):
     connector_cls = resolve_connector(args)
-    cmd = args['cmd']
     devices = args['devices']
     log.info('Starting Godenerg as daemon')
     http_server_fail_event = Event()
 
     try:
         http_server = start_http_server(connector_cls, devices)
-        watchdog = start_watchdog(http_server_fail_event)
+        start_watchdog(http_server_fail_event)
 
         while True:
-           # Check HTTP server, logger and task processor
             http_server = check_http_server(
                 connector_cls, devices, http_server, http_server_fail_event
             )
             sleep(1)
     except Exception as e:
         log.error(e)
-    
+
 
 if __name__ == '__main__':
     args = parse_args()

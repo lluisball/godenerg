@@ -1,13 +1,9 @@
-import pytest
-
+from unittest.mock import Mock
 from struct import pack
-from unittest.mock import patch, Mock
 
 from axpert.connector import Connector
-from axpert.protocol import CmdSpec
-from axpert.main import (
-    Status, parse_response_status, execute, log
-)
+from axpert.protocol import (CmdSpec)
+from axpert.main import execute
 
 
 class MockConnector(Connector):
@@ -28,19 +24,6 @@ class MockConnector(Connector):
         pass
 
 
-@pytest.mark.parametrize(
-    'data, expected',[
-        ('lalfdasfdas NAKfdsfa', Status.KO),
-        ('NAK dfdfas', Status.KO),
-        ('(ACK\r', Status.OK),
-        ('fdsaf', Status.NN),
-        (None, Status.NN)
-    ]
-)
-def test_parse_response(data, expected):
-    assert parse_response_status(data) == expected
-
-
 def test_execute_two_packets():
     mock_connector = MockConnector()
 
@@ -49,7 +32,7 @@ def test_execute_two_packets():
     expected_crc = 0xC099
     crc = pack('>H', expected_crc)
     cmd = CmdSpec(code=msg, val=val, size=8, json=None)
-    execute(mock_connector, cmd)
+    execute(Mock(), mock_connector, cmd)
 
     # Writes to device should happen in writes of 8 bytes;
     #  expect 2 writes. The last write can be smaller than 8
@@ -72,7 +55,7 @@ def test_execute_single_packets():
     expected_crc = 0xB7A9
     crc = pack('>H', expected_crc)
     cmd = CmdSpec(code=msg, val='', size=8, json=None)
-    execute(mock_connector, cmd)
+    execute(Mock(), mock_connector, cmd)
 
     assert len(mock_connector.write_buffer) == 1
     first_packet = mock_connector.write_buffer[0]
