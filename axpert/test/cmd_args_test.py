@@ -44,7 +44,7 @@ def test_validate_args(args_data, exit_val):
          'output_format': 'raw', 'daemonize': False, 'verbose': False},
         {'cmd': CmdSpec(code='QQQ', size=120, val='33.3', json=None),
          'serial': True, 'usb': False}),
-       ({'info': True, 'serial': False, 'usb': True,
+       ({'status': True, 'serial': False, 'usb': True,
          'devices': None, 'value': None, 'size': None,
          'output_format': 'raw', 'daemonize': False, 'verbose': False},
         {'cmd': CmdSpec(code='QPAS', size=66, val=None, json=None),
@@ -53,7 +53,7 @@ def test_validate_args(args_data, exit_val):
 )
 def test_parse_args(mock_parse_args, expected):
     mock_cmd_rel = {
-        'info': CmdSpec(code='QPAS', size=66, json=None, val=None)
+        'status': CmdSpec(code='QPAS', size=66, json=None, val=None)
     }
 
     class MockArgParser():
@@ -72,5 +72,6 @@ def test_parse_args(mock_parse_args, expected):
             patch('axpert.cmd_parser.CMD_REL', mock_cmd_rel):
         response = parse_args()
         assert isinstance(response, dict)
+        print(expected)
         for expected_k, expected_v in expected.items():
             assert response[expected_k] == expected_v

@@ -98,7 +98,7 @@ def status_json_formatter(raw, serialize=True):
         ('grid_volt', to_float), ('grid_freq', to_float),
         ('ac_volt', to_float), ('ac_freq', to_float),
         ('ac_va', to_int), ('ac_watt', to_int),
-        ('load_percent', to_float), ('bus_volt', to_float),
+        ('load_percent', to_int), ('bus_volt', to_int),
         ('batt_volt', to_float), ('batt_charge_amps', to_int),
         ('batt_capacity', to_int), ('temp', to_int),
         ('pv_amps', to_int), ('pv_volts', to_float),

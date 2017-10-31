@@ -1,17 +1,31 @@
+from http.server import HTTPServer
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 from json import dumps as json_dumps
 from functools import reduce
 
+from settings import http_conf
 
-def create_base_remote_cmd_handler(connector_cls, devices, executor, cmds):
+from axpert.protocol import CMD_REL
+
+
+def http_server_create(log, comms_executor):
+    http_handler = create_base_remote_cmd_handler(comms_executor, CMD_REL)
+    server = HTTPServer(('', http_conf['port']), http_handler)
+    server.server_activate()
+    while True:
+        try:
+            server.handle_request()
+        except Exception as e:
+            log.error(e)
+
+
+def create_base_remote_cmd_handler(comms_executor, cmds):
 
     class RemoteCommandsHandler(BaseRemoteCommandsHandler):
 
         def __init__(self, *args, **kwargs):
-            self.connector_cls = connector_cls
-            self.devices = devices
-            self.executor = executor
+            self.comms_executor = comms_executor
             self.cmds = cmds
             super(RemoteCommandsHandler, self).__init__(*args, **kwargs)
 
@@ -62,9 +76,7 @@ class BaseRemoteCommandsHandler(BaseHTTPRequestHandler):
 
     def execute_cmd(self, cmd_name):
         return self.cmds[cmd_name].json(
-            self.executor(
-                self.connector_cls, self.devices, self.cmds[cmd_name]
-            ).data,
+            self.comms_executor(self.cmds[cmd_name]).data,
             serialize=False
         )
 

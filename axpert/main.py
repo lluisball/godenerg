@@ -5,12 +5,13 @@ import daemon
 
 from urllib.request import urlopen
 from urllib.error import HTTPError
-
+from functools import partial
 from time import sleep
 from signal import SIGKILL
-
-from http.server import HTTPServer
 from threading import Thread, Lock, Event
+from datetime import datetime
+
+from settings import http_conf, logger_conf, datalogger_conf
 
 curr_dir = os.path.dirname(os.path.realpath(__file__))
 root_dir = os.path.abspath(os.path.join(curr_dir, '..'))
@@ -20,19 +21,18 @@ if root_dir not in sys.path:
 
 from axpert.connector import resolve_connector                  # noqa
 from axpert.cmd_parser import parse_args                        # noqa
-from axpert.http_handler import create_base_remote_cmd_handler  # noqa
-from axpert.protocol import (
-    CMD_REL, execute, Status
-)        # noqa
+from axpert.http_handler import http_server_create              # noqa
+from axpert.protocol import (CMD_REL, execute, Status)          # noqa
+from axpert.datalogger import (
+    datalogger_create, get_range, DT_FORMAT
+)                                                               # noqa
 
 
-WATCHDOG_URL = 'http://localhost:8889/cmds?cmd=operation_mode'
+WATCHDOG_URL = 'http://localhost:{}/cmds?cmd=operation_mode'.format(
+    http_conf['port']
+)
 WATCHDOG_MAX_TIMEOUT = 10
 WATCHDOG_INTERVAL = 10
-
-FORMAT = '[%(asctime)s] %(message)s'
-LOG_FILE = '{}/godenerg.log'.format(root_dir)
-ENCODING = 'utf-8'
 
 
 def output_as_json(args):
@@ -56,24 +56,11 @@ def run_cmd(args):
             log.error(response.data)
 
 
-def http_server_create(connector_cls, devices):
-    http_handler = create_base_remote_cmd_handler(
-        connector_cls, devices, atomic_execute, CMD_REL
-    )
-    server = HTTPServer(('', 8889), http_handler)
-    server.server_activate()
-    while True:
-        try:
-            server.handle_request()
-        except Exception as e:
-            log.error(e)
-
-
-def start_http_server(connector_cls, devices):
+def start_http_server(comms_executor):
     log.info('Starting HTTP server')
     thread = Thread(
         target=http_server_create,
-        args=[connector_cls, devices]
+        args=[log, comms_executor]
     )
     thread.start()
     log.info('HTTP server started')
@@ -85,9 +72,15 @@ def start_process_executer(connector, cmd):
     log.info('Started process executer')
 
 
-def start_data_logger(connector, cmd):
+def start_data_logger(comms_executor):
     log.info('Starting data logger')
+    thread = Thread(
+        target=datalogger_create,
+        args=[log, comms_executor, CMD_REL]
+    )
+    thread.start()
     log.info('Started data logger')
+    return thread
 
 
 def atomic_execute(connector_cls, devices, cmd):
@@ -138,13 +131,13 @@ def start_watchdog(http_server_fail_event):
     return thread
 
 
-def check_http_server(connector_cls, devices, http_server, fail_event):
+def check_http_server(comms_executor, http_server, fail_event):
     if not fail_event.is_set():
         return http_server
 
     log.error('HTTP Server fail event fired')
     http_server.join(timeout=1)
-    http_server = start_http_server(connector_cls, devices)
+    http_server = start_http_server(comms_executor)
     fail_event.clear()
     return http_server
 
@@ -164,16 +157,44 @@ def run_as_daemon(daemon, args):
     http_server_fail_event = Event()
 
     try:
-        http_server = start_http_server(connector_cls, devices)
+        comms_executor = partial(atomic_execute, connector_cls, devices)
+        http_server = start_http_server(comms_executor)
+
+        start_data_logger(comms_executor)
         start_watchdog(http_server_fail_event)
 
         while True:
             http_server = check_http_server(
-                connector_cls, devices, http_server, http_server_fail_event
+                comms_executor, http_server, http_server_fail_event
             )
             sleep(1)
     except Exception as e:
         log.error(e)
+
+
+def extract(args):
+
+    def _get_dt(dt):
+        original_dt = datetime.strptime(DT_FORMAT)
+        return original_dt.strftime('%Y-%m-%d %H:%M:%S')
+
+    extract_from, extract_to = args['range'].split('-')
+    extract_file = args['file']
+
+    log.info(
+        'Going to extract data from datalogger '
+        'from {} to {} in format to file {}'.format(
+            _get_dt(extract_from), _get_dt(extract_to), extract_file
+        )
+    )
+    with open(extract_file, 'w') as fw:
+        content = get_range(
+            datalogger_conf, int(extract_from), int(extract_to),
+            as_json=args['extract'] == 'json', cols=args['cols']
+        )
+        fw.write(content)
+
+    log.info('File written successfuly')
 
 
 if __name__ == '__main__':
@@ -182,7 +203,10 @@ if __name__ == '__main__':
 
     if args['daemonize']:
         with daemon.DaemonContext() as daemon:
-            logging.basicConfig(format=FORMAT, filename=LOG_FILE)
+            logging.basicConfig(
+                format=logger_conf['format'],
+                filename='{}/{}'.format(root_dir, logger_conf['filename'])
+            )
             log = logging.getLogger('godenerg')
             log.setLevel(log_level)
             run_as_daemon(daemon, args)
@@ -190,4 +214,7 @@ if __name__ == '__main__':
         log = logging.getLogger('godenerg')
         log.setLevel(log_level)
         log.addHandler(logging.StreamHandler(sys.stdout))
-        run_cmd(args)
+        if 'extract' in args and args['extract']:
+            extract(args)
+        else:
+            run_cmd(args)
