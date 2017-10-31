@@ -181,7 +181,7 @@ def run_as_daemon(daemon, args):
 def extract(args):
 
     def _get_dt(dt):
-        original_dt = datetime.strptime(DT_FORMAT)
+        original_dt = datetime.strptime(dt, DT_FORMAT)
         return original_dt.strftime('%Y-%m-%d %H:%M:%S')
 
     extract_from, extract_to = args['range'].split('-')
@@ -195,8 +195,9 @@ def extract(args):
     )
     with open(extract_file, 'w') as fw:
         content = get_range(
-            datalogger_conf, int(extract_from), int(extract_to),
-            as_json=args['extract'] == 'json', cols=args['cols']
+            int(extract_from), int(extract_to),
+            as_json=args['extract'] == 'json', 
+            extract_cols=args['cols']
         )
         fw.write(content)
 

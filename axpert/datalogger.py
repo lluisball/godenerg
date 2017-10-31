@@ -101,7 +101,8 @@ def get_range(from_dt, to_dt, extract_cols=None, as_json=False):
         return json_dumps(rows) if as_json else '\n'.join(rows)
 
     def _process_cols(cols):
-        return cols if as_json else ';'.join(cols)
+        txt_cols = (str(col) for col in cols)
+        return txt_cols if as_json else ';'.join(txt_cols)
 
     extract_cols = '*' if not extract_cols              \
                    else ', '.join(extract_cols)
