@@ -89,5 +89,10 @@ http://machine_ip:8889/cmds?cmd=operation_mode&cmd=status&merge=1
  (ACK
  ```
 
+ ### Extract data from datalogger
+
+ ```
+ > python3 axpert/main.py --usb -d /dev/hidraw0 --extract-csv-data 20171031000000-20171031235959 --col datetime --col batt_volt --col batt_charge_amps --extract-file stats.csv
+ ```
 
 
