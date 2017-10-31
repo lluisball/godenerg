@@ -13,23 +13,17 @@ from axpert.protocol import CMD_REL
 def http_server_create(log, stop_event, comms_executor):
     http_handler = create_base_remote_cmd_handler(comms_executor, CMD_REL)
     server = HTTPServer(('', http_conf['port']), http_handler)
-    try:
-        serve_forever = Thread(target=server.serve_forever)
-        serve_forever.start() 
-    except Exception as e:
-        log.error(e)
+    background_serving = Thread(target=server.serve_forever)
+    background_serving.start() 
 
     while True:
-        try:
-            if stop_event.is_set():
-                log.info('Shutting down http server')
-                server.shutdown()
-                log.info('http server stopped, clearing event')
-                stop_event.clear()
-                return
-            sleep(1)
-        except Exception as e:
-            log.error(e)
+        sleep(1)
+        if stop_event.is_set():
+            log.info('Shutting down http server')
+            server.shutdown()
+            log.info('http server stopped, clearing event')
+            stop_event.clear()
+            return
 
 
 def create_base_remote_cmd_handler(comms_executor, cmds):
