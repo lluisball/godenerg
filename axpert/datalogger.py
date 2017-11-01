@@ -95,7 +95,13 @@ def datalogger_create(log, comms_executor, cmds):
         log.error('Exception in datalogger')
         log.exception(e)
 
-def get_range(from_dt, to_dt, extract_cols=None, as_json=False):
+
+def txt_dt_to_int(txt):
+    return int(txt + ((14 - len(txt)) * '0'))
+
+
+def get_range(from_dt, to_dt, extract_cols=None, 
+              as_json=False, raw_data=False):
 
     def _process_rows(rows):
         return json_dumps(rows) if as_json else '\n'.join(rows)
@@ -113,7 +119,13 @@ def get_range(from_dt, to_dt, extract_cols=None, as_json=False):
 
     with connect(datalogger_conf['db_filename']) as db_conn:
         cursor = db_conn.cursor()
-        cursor.execute(query, dict(from_dt=from_dt, to_dt=to_dt))
+        cursor.execute(
+            query, 
+            dict(from_dt=txt_dt_to_int(from_dt), to_dt=txt_dt_to_int(to_dt))
+        )
+        if raw_data:
+            return cursor.fetchall()
+
         return _process_rows(
             _process_cols(row) for row in cursor.fetchall()
         )

@@ -185,8 +185,16 @@ def run_as_daemon(daemon, args):
 def extract(args):
 
     def _get_dt(dt):
-        original_dt = datetime.strptime(dt, DT_FORMAT)
-        return original_dt.strftime('%Y-%m-%d %H:%M:%S')
+        out_formats = {
+            8: '%Y-%m-%d', 10: '%Y-%m-%d %H', 
+            12: '%Y-%m-%d %H:%M', 14: '%Y-%m-%d %H:%M:%S'
+        }
+        in_formats = {
+            8: '%Y%m%d', 10:'%Y%m%d%H', 
+            12: '%Y%m%d%H%M', 14: '%Y%m%d%H%M%S'
+        }
+        original_dt = datetime.strptime(dt, in_formats[len(dt)])
+        return original_dt.strftime(out_formats[len(dt)])
 
     extract_from, extract_to = args['range'].split('-')
     extract_file = args['file']
@@ -199,8 +207,7 @@ def extract(args):
     )
     with open(extract_file, 'w') as fw:
         content = get_range(
-            int(extract_from), int(extract_to),
-            as_json=args['extract'] == 'json', 
+            extract_from, extract_to, as_json=args['extract'] == 'json',
             extract_cols=args['cols']
         )
         fw.write(content)

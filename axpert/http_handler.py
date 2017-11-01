@@ -4,28 +4,51 @@ from urllib.parse import urlparse, parse_qs
 from json import dumps as json_dumps
 from functools import reduce
 from time import sleep
-from threading import Thread
+from pygal import Bar 
 
 from axpert.settings import http_conf
 from axpert.protocol import CMD_REL
+from axpert.datalogger import get_range 
 
 
 def http_server_create(log, comms_executor):
-    http_handler = create_base_remote_cmd_handler(comms_executor, CMD_REL)
+    http_handler = create_base_remote_cmd_handler(
+        log, comms_executor, CMD_REL
+    )
     server = HTTPServer(('', http_conf['port']), http_handler)
     server.serve_forever()
 
 
-def create_base_remote_cmd_handler(comms_executor, cmds):
+def create_base_remote_cmd_handler(log, comms_executor, cmds):
 
     class RemoteCommandsHandler(BaseRemoteCommandsHandler):
 
         def __init__(self, *args, **kwargs):
+            self.log = log
             self.comms_executor = comms_executor
             self.cmds = cmds
             super(RemoteCommandsHandler, self).__init__(*args, **kwargs)
 
     return RemoteCommandsHandler
+
+
+def html_response(fnx):
+    def _inner(*args, **kwargs):
+        self = args[0]
+        try:
+            response = fnx(*args, **kwargs)
+            self.send_response(200)
+
+        except Exception as e:
+            response = str(e)
+            self.send_response(500)
+            self.log.exception(e)
+
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+        return self.wfile.write(response)
+
+    return _inner
 
 
 def json_response(fnx):
@@ -41,6 +64,7 @@ def json_response(fnx):
             response = dict(error=str(ke))
 
         except Exception as e:
+            self.log.exception(e)
             self.send_response(500)
             response = dict(error=str(e))
 
@@ -57,7 +81,8 @@ def json_response(fnx):
 class BaseRemoteCommandsHandler(BaseHTTPRequestHandler):
 
     routes = {
-        '/cmds': 'get_cmds'
+        '/cmds': 'get_cmds',
+        '/graph': 'plot_datalogger' 
     }
 
     def do_GET(self):
@@ -112,3 +137,24 @@ class BaseRemoteCommandsHandler(BaseHTTPRequestHandler):
                 cmd_name: self.execute_cmd(cmd_name)
                 for cmd_name in req['cmd']
             }
+
+
+    @html_response
+    def plot_datalogger(self, req):
+        from_dt = req['from'][0]
+        to_dt = req['to'][0]
+        cols = req['col'][0]
+
+        data = get_range(
+            from_dt, to_dt, ['datetime', cols], raw_data=True
+        )
+        line_chart = Bar()
+        line_chart.title = 'Inverter stats'
+        labels, vals = [], []
+        for dt, v in data:
+            labels.append(dt)
+            vals.append(v)
+        line_chart.add(cols, vals)
+        line_chart.x_labels = labels
+
+        return line_chart.render()
