@@ -56,18 +56,27 @@ def ensure_db_structure(log, db_conn):
     log.info('Database structure created')
 
 
-def save_datapoint(log, cursor, data):
+def save_datapoint(log, db_conn, data):
+
+    def _clean_val(val):
+        if not val or val=='NA':
+            return 0
+        else:
+            return val
+
     try:
+        cursor = db_conn.cursor()
         log.debug('Saving datapoint')
         data['datetime'] = int(datetime.now().strftime(DT_FORMAT))
-        column_values = [data[col_name] for col_name, _ in COLS]
+        column_values = [_clean_val(data[col_name]) for col_name, _ in COLS]
         column_vars = ', '.join('?' for _ in range(len(COLS)))
         statement = 'INSERT INTO stats VALUES ({})'.format(column_vars)
         log.debug(column_values)
         cursor.execute(statement, column_values)
+        db_conn.commit()
     except Exception as e:
         log.error('Error saving datapoint')
-        log.error(e)
+        log.exception(e)
 
 def datalogger_create(log, comms_executor, cmds):
 
@@ -84,16 +93,14 @@ def datalogger_create(log, comms_executor, cmds):
 
             while True:
                 save_datapoint(
-                    log,
-                    db_conn.cursor(),
+                    log, db_conn,
                     {**_execute_cmd(status_cmd), **_execute_cmd(mode_cmd)}
                 )
-                db_conn.commit()
                 sleep(INTERVAL)
 
     except Exception as e:
         log.error('Exception in datalogger')
-        log.error(e)
+        log.exception(e)
 
 def get_range(from_dt, to_dt, extract_cols=None, as_json=False):
 

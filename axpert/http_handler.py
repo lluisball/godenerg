@@ -10,20 +10,10 @@ from axpert.settings import http_conf
 from axpert.protocol import CMD_REL
 
 
-def http_server_create(log, stop_event, comms_executor):
+def http_server_create(log, comms_executor):
     http_handler = create_base_remote_cmd_handler(comms_executor, CMD_REL)
     server = HTTPServer(('', http_conf['port']), http_handler)
-    background_serving = Thread(target=server.serve_forever)
-    background_serving.start() 
-
-    while True:
-        sleep(1)
-        if stop_event.is_set():
-            log.info('Shutting down http server')
-            server.shutdown()
-            log.info('http server stopped, clearing event')
-            stop_event.clear()
-            return
+    server.serve_forever()
 
 
 def create_base_remote_cmd_handler(comms_executor, cmds):

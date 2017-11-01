@@ -7,8 +7,8 @@ from urllib.request import urlopen
 from urllib.error import HTTPError
 from functools import partial
 from time import sleep
-from signal import SIGKILL
-from threading import Thread, Lock, Event
+from multiprocessing import Process, Lock
+from threading import Thread, Event
 from datetime import datetime
 
 
@@ -22,7 +22,9 @@ from axpert.settings import http_conf, logger_conf, datalogger_conf
 from axpert.connector import resolve_connector                  # noqa
 from axpert.cmd_parser import parse_args                        # noqa
 from axpert.http_handler import http_server_create              # noqa
-from axpert.protocol import (CMD_REL, execute, Status)          # noqa
+from axpert.protocol import (
+    CMD_REL, execute, Status, Response
+)                                                               # noqa
 from axpert.datalogger import (
     datalogger_create, get_range, DT_FORMAT
 )                                                               # noqa
@@ -33,7 +35,7 @@ WATCHDOG_URL = 'http://localhost:{}/cmds?cmd=operation_mode'.format(
 )
 WATCHDOG_MAX_TIMEOUT = 10
 WATCHDOG_INTERVAL = 10
-
+MAX_CONNECTOR_ACQUIRE_TIME = 10
 
 def output_as_json(args):
     return 'format' in args          \
@@ -56,15 +58,15 @@ def run_cmd(args):
             log.error(response.data)
 
 
-def start_http_server(stop_event, comms_executor):
+def start_http_server(comms_executor):
     log.info('Starting HTTP server')
-    thread = Thread(
+    process = Process(
         target=http_server_create,
-        args=[log, stop_event, comms_executor]
+        args=[log, comms_executor]
     )
-    thread.start()
+    process.start()
     log.info('HTTP server started')
-    return thread
+    return process 
 
 
 def start_process_executer(connector, cmd):
@@ -74,22 +76,29 @@ def start_process_executer(connector, cmd):
 
 def start_data_logger(comms_executor):
     log.info('Starting data logger')
-    thread = Thread(
+    process = Process(
         target=datalogger_create,
         args=[log, comms_executor, CMD_REL]
     )
-    thread.start()
+    process.start()
     log.info('Started data logger')
-    return thread
+    return process 
 
 
 def atomic_execute(comms_lock, connector_cls, devices, cmd):
     try:
-        comms_lock.acquire()
+        # Avoid hanging calls waiting for ever on lock 
+        acquired_lock = comms_lock.acquire(
+            timeout=MAX_CONNECTOR_ACQUIRE_TIME
+        )
+        if not acquired_lock:
+            return Response(status=Status.KO, data=None) 
+
         with connector_cls(devices=devices, log=log) as connector:
             return execute(log, connector, cmd)
     finally:
         comms_lock.release()
+
 
 def watchdog_http_server(fail_event):
     if not fail_event.is_set():
@@ -133,45 +142,40 @@ def start_watchdog(http_server_fail_event):
     return thread
 
 
-def check_http_server(comms_executor, http_server, fail_event, stop_event):
+def check_http_server(comms_executor, http_server, fail_event):
     if not fail_event.is_set():
         return http_server
 
     log.error('HTTP Server fail event fired')
-    stop_event.set()
-    while stop_event.is_set():
-        sleep(0.25)
-    http_server = start_http_server(stop_event, comms_executor)
+    http_server.terminate()
+    log.error(
+        'HTTP Server terminated; process alive? -> {}'.format(
+            http_server.is_alive()
+        )
+    )
+    sleep(1)
+
+    http_server = start_http_server(comms_executor)
     fail_event.clear()
     return http_server
-
-
-def connector_error_stop_daemon(daemon, http_server, watchdog):
-    log.error('Could not connect to Inverter after many retries...')
-    log.error('Stopping daemon')
-    http_server.join(timeout=0.1)
-    watchdog.join(timeout=0.1)
-    daemon.terminate(SIGKILL, None)
 
 
 def run_as_daemon(daemon, args):
     connector_cls = resolve_connector(args)
     devices = args['devices']
     log.info('Starting Godenerg as daemon')
-    http_server_fail_event = Event()
-    http_server_stop_event = Event()
-    comms_lock = Lock()
+    http_server_fail_event = Event()        # Thread Event
+    comms_lock = Lock()                     # Process Lock
     try:
         comms_executor = partial(atomic_execute, comms_lock, connector_cls, devices)
-        http_server = start_http_server(http_server_stop_event, comms_executor)
+        http_server = start_http_server(comms_executor)
 
         start_data_logger(comms_executor)
         start_watchdog(http_server_fail_event)
 
         while True:
             http_server = check_http_server(
-                comms_executor, http_server, http_server_fail_event,
-                http_server_stop_event
+                comms_executor, http_server, http_server_fail_event
             )
             sleep(1)
     except Exception as e:
