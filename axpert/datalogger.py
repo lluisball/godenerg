@@ -57,18 +57,11 @@ def ensure_db_structure(log, db_conn):
 
 
 def save_datapoint(log, db_conn, data):
-
-    def _clean_val(val):
-        if not val or val=='NA':
-            return 0
-        else:
-            return val
-
     try:
         cursor = db_conn.cursor()
         log.debug('Saving datapoint')
         data['datetime'] = int(datetime.now().strftime(DT_FORMAT))
-        column_values = [_clean_val(data[col_name]) for col_name, _ in COLS]
+        column_values = [data[col_name] for col_name, _ in COLS]
         column_vars = ', '.join('?' for _ in range(len(COLS)))
         statement = 'INSERT INTO stats VALUES ({})'.format(column_vars)
         log.debug(column_values)

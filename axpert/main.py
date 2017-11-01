@@ -111,7 +111,7 @@ def watchdog_http_server(fail_event):
         except Exception as e:
             fail_event.set()
             log.debug('Setting HTTP server fail event')
-            log.error(e)
+            log.exception(e)
     else:
         log.debug(
             'HTTP server fail event set, cannot watchdog'
@@ -128,7 +128,7 @@ def watchdog(http_server_fail_event):
             )
 
     except Exception as e:
-        log.error(e)
+        log.exception(e)
 
 
 def start_watchdog(http_server_fail_event):
@@ -179,7 +179,7 @@ def run_as_daemon(daemon, args):
             )
             sleep(1)
     except Exception as e:
-        log.error(e)
+        log.exception(e)
 
 
 def extract(args):

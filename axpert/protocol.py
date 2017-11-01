@@ -80,11 +80,18 @@ def parse_device_status(raw_status):
 
 
 def typer(frmt):
+
+    def _clean_val(val):
+        if not val or val=='NA':
+            return 0
+        else:
+            return val
+
     types = {'s': str, 'f': float, 'd': int}
 
     for frm, type_fnx in types.items():
         if frm in frmt:
-            return lambda txt: type_fnx(frmt % type_fnx(txt))
+            return lambda txt: type_fnx(frmt % type_fnx(_clean_val(txt)))
 
     return lambda txt: txt % frmt
 
