@@ -3,6 +3,7 @@ import os
 import sys
 import daemon
 
+from signal import SIGKILL
 from urllib.request import urlopen
 from urllib.error import HTTPError
 from functools import partial
@@ -26,14 +27,15 @@ from axpert.protocol import (
     CMD_REL, execute, Status, Response
 )                                                               # noqa
 from axpert.datalogger import (
-    datalogger_create, get_range, DT_FORMAT
+    datalogger_create, get_range, DT_FORMAT,
+    get_last_data_datetime, datalogger_http_server_create
 )                                                               # noqa
 
 
 WATCHDOG_URL = 'http://localhost:{}/cmds?cmd=operation_mode'.format(
     http_conf['port']
 )
-WATCHDOG_MAX_TIMEOUT = 10
+WATCHDOG_MAX_TIMEOUT = 15
 WATCHDOG_INTERVAL = 10
 MAX_CONNECTOR_ACQUIRE_TIME = 10
 
@@ -74,30 +76,42 @@ def start_process_executer(connector, cmd):
     log.info('Started process executer')
 
 
-def start_data_logger(comms_executor):
+def start_datalogger(comms_executor):
     log.info('Starting data logger')
-    process = Process(
+    datalogger = Process(
         target=datalogger_create,
         args=[log, comms_executor, CMD_REL]
     )
-    process.start()
+    datalogger.start()
     log.info('Started data logger')
-    return process 
+
+    log.info('Starting data logger HTTP Server')
+    datalogger_http = Process(
+        target=datalogger_http_server_create,
+        args=[log]
+    )
+    datalogger_http.start()
+    log.info('Started data logger HTTP Server')
+
+    return (datalogger, datalogger_http)
 
 
 def atomic_execute(comms_lock, connector_cls, devices, cmd):
+    acquired_lock = False
     try:
-        # Avoid hanging calls waiting for ever on lock 
-        acquired_lock = comms_lock.acquire(
-            timeout=MAX_CONNECTOR_ACQUIRE_TIME
-        )
+        acquired_lock = comms_lock.acquire(timeout=10)
         if not acquired_lock:
             return Response(status=Status.KO, data=None) 
 
         with connector_cls(devices=devices, log=log) as connector:
             return execute(log, connector, cmd)
+
+    except Exception as e:
+        log.exception(e)
+
     finally:
-        comms_lock.release()
+        if acquired_lock:  
+            comms_lock.release()
 
 
 def watchdog_http_server(fail_event):
@@ -119,45 +133,71 @@ def watchdog_http_server(fail_event):
         )
 
 
-def watchdog(http_server_fail_event):
+def watchdog_datalogger_server(fail_event):
+    last_dt = get_last_data_datetime(log)
+    now = datetime.now()
+    delta = (now - last_dt).total_seconds()
+    datalogger_interval = datalogger_conf['interval']
+    if delta > (datalogger_interval * 2):
+        fail_event.set()
+
+
+def watchdog(http_fail_event, datalogger_fail_event):
     try:
         while True:
             sleep(WATCHDOG_INTERVAL)
-            watchdog_http_server(
-                http_server_fail_event
-            )
+            watchdog_http_server(http_fail_event)
+            watchdog_datalogger_server(datalogger_fail_event)
 
     except Exception as e:
         log.exception(e)
 
 
-def start_watchdog(http_server_fail_event):
+def start_watchdog(http_fail_event, datalogger_fail_event):
     log.info('Starting Watchdog')
     thread = Thread(
         target=watchdog,
-        args=[http_server_fail_event]
+        args=[http_fail_event, datalogger_fail_event]
     )
     thread.start()
     log.info('Watchdog started')
     return thread
 
 
-def check_http_server(comms_executor, http_server, fail_event):
-    if not fail_event.is_set():
-        return http_server
-
-    log.error('HTTP Server fail event fired')
-    http_server.terminate()
+def kill_process(process, process_label):
+    os.kill(process.pid(), SIGKILL)
+    sleep(1)
     log.error(
-        'HTTP Server terminated; process alive? -> {}'.format(
-            http_server.is_alive()
+        '{} FORCED termination; process alive? -> {}'.format(
+            process_label, process.is_alive()
         )
     )
-    sleep(1)
 
-    http_server = start_http_server(comms_executor)
+
+def stop_process(process, process_label):
+    process.terminate()
+    sleep(1)
+    log.error(
+        '{} terminated; process alive? -> {}'.format(
+            process_label, process.is_alive()
+        )
+    )
+
+
+def check_process(process, process_start, fail_event, process_label):
+    if not fail_event.is_set():
+        return process
+
+    log.error('{} fail event fired'.format(process_label))
+    stop_process(process, process_label) 
+
+    if process.is_alive():
+        kill_process(process, process_label)
+
+    process = process_start() 
     fail_event.clear()
-    return http_server
+
+    return process 
 
 
 def run_as_daemon(daemon, args):
@@ -165,18 +205,32 @@ def run_as_daemon(daemon, args):
     devices = args['devices']
     log.info('Starting Godenerg as daemon')
     http_server_fail_event = Event()        # Thread Event
+    datalogger_server_fail_event = Event()  # Thread Event
     comms_lock = Lock()                     # Process Lock
     try:
-        comms_executor = partial(atomic_execute, comms_lock, connector_cls, devices)
-        http_server = start_http_server(comms_executor)
+        comms_executor = partial(
+            atomic_execute, comms_lock, connector_cls, devices
+        )
+        http_server_start = partial(start_http_server, comms_executor)
+        datalogger_server_start = partial(start_datalogger, comms_executor)
 
-        start_data_logger(comms_executor)
-        start_watchdog(http_server_fail_event)
+        http_server = http_server_start() 
+        datalogger_server, datalogger_http_server = datalogger_server_start()
+
+        start_watchdog(
+            http_server_fail_event, datalogger_server_fail_event
+        )
 
         while True:
-            http_server = check_http_server(
-                comms_executor, http_server, http_server_fail_event
+            http_server = check_process(
+                http_server, http_server_start, 
+                http_server_fail_event, 'HTTP Server'
             )
+            datalogger_server = check_process(
+                datalogger_server, datalogger_server_start, 
+                datalogger_server_fail_event, 'Datalogger Server'
+            )
+
             sleep(1)
     except Exception as e:
         log.exception(e)

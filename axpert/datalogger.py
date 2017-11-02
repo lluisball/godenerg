@@ -1,12 +1,19 @@
+from http.server import HTTPServer
 from sqlite3 import connect
 from time import sleep
 from datetime import datetime
 from json import dumps as json_dumps
+from math import ceil
+from pygal import Line 
+from functools import reduce
 
 from axpert.settings import datalogger_conf
-
+from axpert.http_handler import (
+    BaseGodenergHandler, html_response
+)
 
 DT_FORMAT = '%Y%m%d%H%M%S'
+INTERVAL = datalogger_conf['interval']
 
 COLS = [
     ('datetime', 'INTEGER'),
@@ -60,7 +67,7 @@ def save_datapoint(log, db_conn, data):
     try:
         cursor = db_conn.cursor()
         log.debug('Saving datapoint')
-        data['datetime'] = int(datetime.now().strftime(DT_FORMAT))
+        data['datetime'] = int(datetime.now().timestamp())
         column_values = [data[col_name] for col_name, _ in COLS]
         column_vars = ', '.join('?' for _ in range(len(COLS)))
         statement = 'INSERT INTO stats VALUES ({})'.format(column_vars)
@@ -71,6 +78,7 @@ def save_datapoint(log, db_conn, data):
         log.error('Error saving datapoint')
         log.exception(e)
 
+
 def datalogger_create(log, comms_executor, cmds):
 
     def _execute_cmd(cmd):
@@ -78,17 +86,18 @@ def datalogger_create(log, comms_executor, cmds):
         return cmd.json(response.data, serialize=False)
 
     try:
-        INTERVAL = datalogger_conf['interval']
         status_cmd, mode_cmd = cmds['status'], cmds['operation_mode']
 
         with connect(datalogger_conf['db_filename']) as db_conn:
             ensure_db_structure(log, db_conn)
 
             while True:
-                save_datapoint(
-                    log, db_conn,
-                    {**_execute_cmd(status_cmd), **_execute_cmd(mode_cmd)}
-                )
+                status_data = _execute_cmd(status_cmd) 
+                mode_data = _execute_cmd(mode_cmd)
+                if status_data and mode_data:
+                    save_datapoint(
+                        log, db_conn, {**status_data, **mode_data}
+                    )
                 sleep(INTERVAL)
 
     except Exception as e:
@@ -97,12 +106,59 @@ def datalogger_create(log, comms_executor, cmds):
 
 
 def txt_dt_to_int(txt):
-    return int(txt + ((14 - len(txt)) * '0'))
+    txt_dt = txt + ((14 - len(txt)) * '0') 
+    return int(datetime.strptime(txt_dt, DT_FORMAT).timestamp())
 
 
-def get_range(from_dt, to_dt, extract_cols=None, 
-              as_json=False, raw_data=False):
+def get_last_data_datetime(log):
+    with connect(datalogger_conf['db_filename']) as db_conn:
+        cursor = db_conn.cursor()
+        cursor.execute(
+            'SELECT datetime FROM stats ORDER BY datetime DESC LIMIT 1' 
+        )
+        dt = cursor.fetchone()
+        if dt:
+            try:
+                return datetime.fromtimestamp(dt[0])  
+            except Exception as e:
+                log.exception(e)
+                return 0
+        else:
+            return 0 
 
+
+def get_range(from_dt, to_dt, extract_cols=None,
+              as_json=False, raw_data=False, grouped=False):
+
+    MAX_GROUPED_ITEMS = 2048
+    
+    def _build_query(db_conn, params):
+        cols_stat = '*' if not extract_cols  else ', '.join(extract_cols)
+
+        where_stat = 'WHERE datetime >= :from_dt AND datetime <= :to_dt'
+        if not grouped:
+            return 'SELECT {} FROM stats {}'.format(cols_stat, where_stat)
+
+        total_items, = db_conn.cursor().execute(
+            'SELECT COUNT(1) FROM stats ' + where_stat, params
+        ).fetchone()
+
+        if total_items <= MAX_GROUPED_ITEMS:
+            return 'SELECT 1, datetime, {} FROM stats {}'.format(
+                cols_stat, where_stat
+            )
+
+        return '''
+            SELECT {group_coe}, (datetime / {group_coe}), {cols} 
+            FROM stats {where_stat} GROUP BY (datetime / {group_coe}) 
+        '''.format(
+                **dict(
+                    group_coe=INTERVAL * ceil(total_items / MAX_GROUPED_ITEMS),
+                    cols=','.join('AVG({})'.format(c) for c in extract_cols),
+                    where_stat=where_stat
+                )
+            )
+                
     def _process_rows(rows):
         return json_dumps(rows) if as_json else '\n'.join(rows)
 
@@ -110,22 +166,100 @@ def get_range(from_dt, to_dt, extract_cols=None,
         txt_cols = (str(col) for col in cols)
         return txt_cols if as_json else ';'.join(txt_cols)
 
-    extract_cols = '*' if not extract_cols              \
-                   else ', '.join(extract_cols)
-    query = '''
-        SELECT {} FROM stats
-        WHERE datetime >= :from_dt AND datetime <= :to_dt
-    '''.format(extract_cols)
 
     with connect(datalogger_conf['db_filename']) as db_conn:
-        cursor = db_conn.cursor()
-        cursor.execute(
-            query, 
-            dict(from_dt=txt_dt_to_int(from_dt), to_dt=txt_dt_to_int(to_dt))
+        params = dict(
+            from_dt=txt_dt_to_int(from_dt), to_dt=txt_dt_to_int(to_dt)
         )
+        cursor = db_conn.cursor()
+        cursor.execute(_build_query(db_conn, params), params) 
         if raw_data:
             return cursor.fetchall()
 
         return _process_rows(
             _process_cols(row) for row in cursor.fetchall()
         )
+
+
+def datalogger_http_server_create(log):
+    http_handler = create_base_datalogger_handler(log)
+    server = HTTPServer(('', datalogger_conf['port']), http_handler)
+    server.serve_forever()
+
+def create_base_datalogger_handler(log):
+
+    class DataLoggerHandler(BaseDataLoggerHandler):
+
+        def __init__(self, *args, **kwargs):
+            self.log = log
+            super(DataLoggerHandler, self).__init__(*args, **kwargs)
+
+    return DataLoggerHandler
+
+
+class BaseDataLoggerHandler(BaseGodenergHandler):
+
+    routes = {
+        '/graph': 'plot_datalogger' 
+    }
+
+    MAX_X_LABELS = 20
+    MAX_Y_LABELS = 20
+
+    def compose_chart_data(self, data):
+        datalen = len(data)
+        label_mod = ceil(datalen / self.MAX_X_LABELS) \
+            if datalen > self.MAX_X_LABELS else None 
+
+        def _fold_data_point(points, point):
+            index, (coef, tms, val) = point
+            if label_mod and (index % label_mod) == 0:
+                points['labels'].append(
+                    datetime.fromtimestamp(int(tms * coef))
+                )
+            else:
+                points['labels'].append('')
+
+            points['values'].append(val)
+            return points
+    
+        return reduce(
+            _fold_data_point, enumerate(data), dict(labels=[], values=[])
+        )
+        
+    def resolve_y_labels(self, items):
+        itemlen = len(items)
+        if itemlen <= self.MAX_Y_LABELS:
+            return items
+
+        step = ceil(itemlen / self.MAX_Y_LABELS)
+        return items[::step]
+
+    @html_response
+    def plot_datalogger(self, req):
+        from_dt = req['from'][0]
+        to_dt = req['to'][0]
+        col_1 = req['col_1'][0]
+        
+        data = get_range(
+            from_dt, to_dt, [col_1], raw_data=True, grouped=True
+        )
+
+        range_1_from = int(min(data, key=lambda i: i[2])[2]) 
+        range_1_to = int(max(data, key=lambda i: i[2])[2])
+
+        line_chart = Line(
+            show_dots=False, fill=True, 
+            range=(range_1_from, range_1_to),
+            x_label_rotation=40, title='Inverter Stats'
+        )
+
+        line_chart.y_labels = self.resolve_y_labels(
+            range(range_1_from, range_1_to + 1)
+        )
+        
+        chart_data = self.compose_chart_data(data)
+        line_chart.add(col_1, chart_data['values'])
+        line_chart.x_labels = chart_data['labels'] 
+
+        return line_chart.render()

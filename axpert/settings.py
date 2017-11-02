@@ -10,5 +10,6 @@ http_conf = {
 
 datalogger_conf = {
     'db_filename': '/home/ups/godenerg/godenerg.db',
-    'interval': 15
+    'interval': 15,
+    'port': 8890
 }

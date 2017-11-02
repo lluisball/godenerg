@@ -4,32 +4,25 @@ from urllib.parse import urlparse, parse_qs
 from json import dumps as json_dumps
 from functools import reduce
 from time import sleep
-from pygal import Bar 
+from datetime import datetime
 
 from axpert.settings import http_conf
 from axpert.protocol import CMD_REL
-from axpert.datalogger import get_range 
 
 
-def http_server_create(log, comms_executor):
-    http_handler = create_base_remote_cmd_handler(
-        log, comms_executor, CMD_REL
-    )
-    server = HTTPServer(('', http_conf['port']), http_handler)
-    server.serve_forever()
+class BaseGodenergHandler(BaseHTTPRequestHandler):
 
+    routes = {} 
 
-def create_base_remote_cmd_handler(log, comms_executor, cmds):
-
-    class RemoteCommandsHandler(BaseRemoteCommandsHandler):
-
-        def __init__(self, *args, **kwargs):
-            self.log = log
-            self.comms_executor = comms_executor
-            self.cmds = cmds
-            super(RemoteCommandsHandler, self).__init__(*args, **kwargs)
-
-    return RemoteCommandsHandler
+    def do_GET(self):
+        parsed_path = urlparse(self.path)
+        route = parsed_path.path
+        if route not in self.routes:
+            self.send_response(404)
+            self.wfile.write(b'Route not found')
+        else:
+            route_fnx = getattr(self, self.routes[route])
+            route_fnx(parse_qs(parsed_path.query))
 
 
 def html_response(fnx):
@@ -78,22 +71,32 @@ def json_response(fnx):
     return _inner
 
 
-class BaseRemoteCommandsHandler(BaseHTTPRequestHandler):
+def http_server_create(log, comms_executor):
+    http_handler = create_base_remote_cmd_handler(
+        log, comms_executor, CMD_REL
+    )
+    server = HTTPServer(('', http_conf['port']), http_handler)
+    server.serve_forever()
+
+
+def create_base_remote_cmd_handler(log, comms_executor, cmds):
+
+    class RemoteCommandsHandler(BaseRemoteCommandsHandler):
+
+        def __init__(self, *args, **kwargs):
+            self.log = log
+            self.comms_executor = comms_executor
+            self.cmds = cmds
+            super(RemoteCommandsHandler, self).__init__(*args, **kwargs)
+
+    return RemoteCommandsHandler
+
+
+class BaseRemoteCommandsHandler(BaseGodenergHandler):
 
     routes = {
         '/cmds': 'get_cmds',
-        '/graph': 'plot_datalogger' 
     }
-
-    def do_GET(self):
-        parsed_path = urlparse(self.path)
-        route = parsed_path.path
-        if route not in self.routes:
-            self.send_response(404)
-            self.wfile.write(b'Route not found')
-        else:
-            route_fnx = getattr(self, self.routes[route])
-            route_fnx(parse_qs(parsed_path.query))
 
     def execute_cmd(self, cmd_name):
         return self.cmds[cmd_name].json(
@@ -128,33 +131,13 @@ class BaseRemoteCommandsHandler(BaseHTTPRequestHandler):
         if ('merge' in req and req['merge'][0] == '1') or len(req['cmd']) == 1:
             data = (self.execute_cmd(cmd) for cmd in req['cmd'])
             return reduce(
-                lambda merged, item: merged.update(item) or merged,
+                lambda merged, item: \
+                    merged.update(item if item else {}) or merged,
                 data, {}
             )
 
         else:
             return {
-                cmd_name: self.execute_cmd(cmd_name)
+                cmd_name: self.execute_cmd(cmd_name) or {}
                 for cmd_name in req['cmd']
             }
-
-
-    @html_response
-    def plot_datalogger(self, req):
-        from_dt = req['from'][0]
-        to_dt = req['to'][0]
-        cols = req['col'][0]
-
-        data = get_range(
-            from_dt, to_dt, ['datetime', cols], raw_data=True
-        )
-        line_chart = Bar()
-        line_chart.title = 'Inverter stats'
-        labels, vals = [], []
-        for dt, v in data:
-            labels.append(dt)
-            vals.append(v)
-        line_chart.add(cols, vals)
-        line_chart.x_labels = labels
-
-        return line_chart.render()

@@ -114,6 +114,9 @@ def status_json_formatter(raw, serialize=True):
         ('mask_b', to_str), ('mask_c', to_str),
         ('pv_watts', to_int), ('mask_d', to_str)
     )
+    
+    if not raw:
+        return None
 
     # Ignore initial '(' and end 5 byte split
     raw_tokens = raw[1:-5].split(' ')
@@ -122,7 +125,9 @@ def status_json_formatter(raw, serialize=True):
         for (label, formatter), token in zip(structure, raw_tokens)
     }
 
-    struct = {**data, **parse_device_status(data['raw_status'])}
+    struct = {
+        **data, **parse_device_status(data.get('raw_status', '00000000'))
+    }
     return json_dumps(struct) if serialize else struct
 
 
@@ -132,6 +137,8 @@ def operation_json_formatter(raw, serialize=True):
         'L': 'LN', 'B': 'BT',
         'F': 'FA', 'H': 'PS'
     }
+    if not raw:
+        return None
     mode_code = raw[1]
     data = {'mode': modes.get(mode_code, '00')}
     return json_dumps(data) if serialize else data
