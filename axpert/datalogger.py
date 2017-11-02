@@ -206,13 +206,17 @@ class BaseDataLoggerHandler(BaseGodenergHandler):
     MAX_X_LABELS = 20
     MAX_Y_LABELS = 20
 
-    def compose_chart_data(self, data):
+    def compose_chart_data(self, data, secondary=False):
         datalen = len(data)
         label_mod = ceil(datalen / self.MAX_X_LABELS) \
             if datalen > self.MAX_X_LABELS else None 
 
         def _fold_data_point(points, point):
-            index, (coef, tms, val) = point
+            if secondary:
+                index, (coef, tms, val_1, val_2) = point
+            else:
+                index, (coef, tms, val_1) = point
+
             if label_mod and (index % label_mod) == 0:
                 points['labels'].append(
                     datetime.fromtimestamp(int(tms * coef))
@@ -220,11 +224,14 @@ class BaseDataLoggerHandler(BaseGodenergHandler):
             else:
                 points['labels'].append('')
 
-            points['values'].append(val)
+            points['values_1'].append(val_1)
+            if secondary:
+                points['values_2'].append(val_2)
             return points
     
         return reduce(
-            _fold_data_point, enumerate(data), dict(labels=[], values=[])
+            _fold_data_point, enumerate(data), 
+            dict(labels=[], values_1=[], values_2=[])
         )
         
     def resolve_y_labels(self, items):
@@ -240,17 +247,25 @@ class BaseDataLoggerHandler(BaseGodenergHandler):
         from_dt = req['from'][0]
         to_dt = req['to'][0]
         col_1 = req['col_1'][0]
-        
+        col_2 = req.get('col_2', [None])[0]
+        cols = filter(None, [col_1, col_2])
+
         data = get_range(
-            from_dt, to_dt, [col_1], raw_data=True, grouped=True
+            from_dt, to_dt, cols, raw_data=True, grouped=True
         )
 
-        range_1_from = int(min(data, key=lambda i: i[2])[2]) 
-        range_1_to = int(max(data, key=lambda i: i[2])[2])
+        COL_1_V, COL_2_V = 2, 3
+        range_1_from = int(min(data, key=lambda i: i[COL_1_V])[COL_1_V]) 
+        range_1_to = int(max(data, key=lambda i: i[COL_1_V])[COL_1_V])
+        if col_2:
+            range_2_from = int(min(data, key=lambda i: i[COL_2_V])[COL_2_V]) 
+            range_2_to = int(max(data, key=lambda i: i[COL_2_V])[COL_2_V])
+
 
         line_chart = Line(
-            show_dots=False, fill=True, 
+            show_dots=False, fill=True, show_x_guides=False, 
             range=(range_1_from, range_1_to),
+            secondary_range=(range_2_from, range_2_to) if col_2 else None,
             x_label_rotation=40, title='Inverter Stats'
         )
 
@@ -258,8 +273,12 @@ class BaseDataLoggerHandler(BaseGodenergHandler):
             range(range_1_from, range_1_to + 1)
         )
         
-        chart_data = self.compose_chart_data(data)
-        line_chart.add(col_1, chart_data['values'])
-        line_chart.x_labels = chart_data['labels'] 
+        chart_data = self.compose_chart_data(
+            data, secondary=(col_2!=None)
+        )
+        line_chart.add(col_1, chart_data['values_1'])
+        if col_2:
+            line_chart.add(col_2, chart_data['values_2'], secondary=True)
 
+        line_chart.x_labels = chart_data['labels'] 
         return line_chart.render()
