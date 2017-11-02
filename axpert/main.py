@@ -165,7 +165,7 @@ def start_watchdog(http_fail_event, datalogger_fail_event):
 
 
 def kill_process(process, process_label):
-    os.kill(process.pid(), SIGKILL)
+    os.kill(process.pid, SIGKILL)
     sleep(1)
     log.error(
         '{} FORCED termination; process alive? -> {}'.format(
