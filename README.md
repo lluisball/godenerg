@@ -14,6 +14,19 @@ pytest -v --pyargs axpert
  $> python3 axpert/main.py --usb -d /dev/hidraw0 --deamon
 ```
 
+* Datalogger starts up and starts logging QPIGS command into a sqlite 
+  database. The loggin interval is configured via the setup file found 
+  in the file [axpert/settings.py](axpert/settings.py) inside the 
+  dictionary `datalogger_conf`:
+
+  ```python
+    datalogger_conf = {
+        'db_filename': '/home/ups/godenerg/godenerg.db',
+        'interval': 15,
+        'port': 8890
+    }
+    ```
+
 * HTTP Server for JSON realtime data usage. Since the nature of the
   USB / serial communications is limited to a single client. Calls
   block until the serial / USB is free. So far just status (QPIGS)
