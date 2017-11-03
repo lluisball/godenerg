@@ -84,7 +84,10 @@ def start_datalogger(comms_executor):
     )
     datalogger.start()
     log.info('Started data logger')
+    return datalogger
 
+
+def start_datalogger_http():
     log.info('Starting data logger HTTP Server')
     datalogger_http = Process(
         target=datalogger_http_server_create,
@@ -92,8 +95,7 @@ def start_datalogger(comms_executor):
     )
     datalogger_http.start()
     log.info('Started data logger HTTP Server')
-
-    return (datalogger, datalogger_http)
+    return datalogger_http
 
 
 def atomic_execute(comms_lock, connector_cls, devices, cmd):
@@ -213,9 +215,11 @@ def run_as_daemon(daemon, args):
         )
         http_server_start = partial(start_http_server, comms_executor)
         datalogger_server_start = partial(start_datalogger, comms_executor)
+        datalogger_http_server_start = partial(start_datalogger_http)
 
         http_server = http_server_start() 
-        datalogger_server, datalogger_http_server = datalogger_server_start()
+        datalogger_server = datalogger_server_start() 
+        datalogger_http_server = datalogger_http_server_start() 
 
         start_watchdog(
             http_server_fail_event, datalogger_server_fail_event

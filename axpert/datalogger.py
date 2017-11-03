@@ -5,6 +5,7 @@ from datetime import datetime
 from json import dumps as json_dumps
 from math import ceil
 from pygal import Line 
+from pygal.style import Style
 from functools import reduce
 
 from axpert.settings import datalogger_conf
@@ -242,37 +243,55 @@ class BaseDataLoggerHandler(BaseGodenergHandler):
         step = ceil(itemlen / self.MAX_Y_LABELS)
         return items[::step]
 
+    def build_line(self, data, col_2):
+        COL_1_V, COL_2_V = 2, 3
+        custom_style = Style(
+            background='transparent',
+            plot_background='transparent',
+            foreground='#000000',
+            foreground_strong='#FFFFFF',
+            foreground_subtle='#630C0D',
+            opacity='.7',
+            opacity_hover='.9',
+            transition='400ms ease-in',
+            colors=('#E853A0', '#E89B53')
+        )
+
+        range_1_from = int(min(data, key=lambda i: i[COL_1_V])[COL_1_V]) 
+        range_1_to = int(max(data, key=lambda i: i[COL_1_V])[COL_1_V])
+
+        if col_2:
+            range_2_from = int(min(data, key=lambda i: i[COL_2_V])[COL_2_V]) 
+            range_2_to = int(max(data, key=lambda i: i[COL_2_V])[COL_2_V])
+
+        chart = Line(
+            show_dots=False, fill=True, show_x_guides=False, 
+            range=(range_1_from, range_1_to),
+            secondary_range=(range_2_from, range_2_to) if col_2 else None,
+            x_label_rotation=40, title='Inverter Stats',
+            style=custom_style
+        )
+        chart.y_labels = self.resolve_y_labels(
+            range(range_1_from, range_1_to + 1)
+        )
+        return chart
+
+
     @html_response
     def plot_datalogger(self, req):
         from_dt = req['from'][0]
         to_dt = req['to'][0]
         col_1 = req['col_1'][0]
         col_2 = req.get('col_2', [None])[0]
-        cols = filter(None, [col_1, col_2])
+        cols = [col for col in [col_1, col_2] if col]
 
         data = get_range(
-            from_dt, to_dt, cols, raw_data=True, grouped=True
+            from_dt, to_dt, cols, raw_data=True, grouped=True,
         )
 
-        COL_1_V, COL_2_V = 2, 3
-        range_1_from = int(min(data, key=lambda i: i[COL_1_V])[COL_1_V]) 
-        range_1_to = int(max(data, key=lambda i: i[COL_1_V])[COL_1_V])
-        if col_2:
-            range_2_from = int(min(data, key=lambda i: i[COL_2_V])[COL_2_V]) 
-            range_2_to = int(max(data, key=lambda i: i[COL_2_V])[COL_2_V])
-
-
-        line_chart = Line(
-            show_dots=False, fill=True, show_x_guides=False, 
-            range=(range_1_from, range_1_to),
-            secondary_range=(range_2_from, range_2_to) if col_2 else None,
-            x_label_rotation=40, title='Inverter Stats'
-        )
-
-        line_chart.y_labels = self.resolve_y_labels(
-            range(range_1_from, range_1_to + 1)
-        )
-        
+        line_chart = self.build_line(data, col_2)
+      
+                
         chart_data = self.compose_chart_data(
             data, secondary=(col_2!=None)
         )
