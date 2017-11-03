@@ -302,9 +302,9 @@ class BaseDataLoggerHandler(BaseGodenergHandler):
         chart_data = self.compose_chart_data(
             data, secondary=(col_2!=None)
         )
-        line_chart.add(col_1[:11], chart_data['values_1'])
+        line_chart.add(col_1[:14], chart_data['values_1'])
         if col_2:
-            line_chart.add(col_2[:11], chart_data['values_2'], secondary=True)
+            line_chart.add(col_2[:14], chart_data['values_2'], secondary=True)
 
         line_chart.x_labels = chart_data['labels'] 
         return line_chart.render()
