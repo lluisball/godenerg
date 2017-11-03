@@ -5,8 +5,9 @@ So far tested on usb connections, whenever I get my hands on a usb to serial ada
 I will test on serial connections.
 
 ## Testing:
-pytest -v --pyargs axpert
-
+```
+ $> pytest -v --pyargs axpert
+```
 
 ## Run as daemon
 
@@ -26,6 +27,52 @@ pytest -v --pyargs axpert
         'port': 8890
     }
     ```
+
+    - *Next Steps for datalogger*  
+      From here, the next step will be to start logging the last 5 hours, just keeping 
+      the 5 previous hours logged by a small interval (like each 2 seconds).
+      With this data I can then develop processes to overwrite the 
+      dodgy charging algorithims that the inverted has and some other 
+      little problems, changing settings on the fly dinamicaly.
+
+* Datalogger HTTP server for graphing datacharts (for the moment).
+  The server starts in the port specified under the 'port' key in 
+  the `datalogger_conf` specified above.
+
+    - Charting of one or two metrics are allowed.
+
+    - If more of 2048 points are present in the chart averaging is done
+      dinamicaly.
+
+    - Date or datetime ranges are possible with the following querystring parameter
+      formats, you can specify YYYYMMDD/YYYYMMDDHH/YYYYMMDDHHMM/YYYYMMDDHHMMSS:
+
+        * From 2017-11-01 00:00 to 2017-11-04 00:00
+        ```
+        from=20171101&to=20171104 
+        ```
+
+        * From 2017-11-02 15:57 to 2017-11-02 19:00
+        ```
+        from=201711021557&to=2017110219
+        ``` 
+
+    - First desired column: `col_1=bat_volt`
+
+    - Second desired column (optional): `col_2=pv_watts`
+
+    - Example 1, graphing `batt_charge_amps` vs `pv_amps` for the third of November:
+    
+        `http://machine_ip:8890/graph?from=20171103&to=20171104&col_1=batt_charge_amps&col_2=pv_amps`
+        ![2 cols example](docs/graphing_datalogger_2_cols.png)
+
+
+    - Example 2, graphing `batt_volt` for third of November:
+
+       `http://machine_ip:8890/graph?from=20171103&to=20171104&col_1=batt_volt`
+        ![1 col example](docs/graphing_datalogger_1_col.png)
+
+
 
 * HTTP Server for JSON realtime data usage. Since the nature of the
   USB / serial communications is limited to a single client. Calls
