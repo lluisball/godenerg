@@ -1,8 +1,32 @@
-# godenerg
+# GODENERG
+
 Atersa / Axpert Inverter python library / interface / tool
 
-So far tested on usb connections, whenever I get my hands on a usb to serial adapter
-I will test on serial connections.
+The idea is to do a tool that works better that the WatchPower horsepoo that
+comes with the inverter and is usable through the network. The Watchpower
+is a badly coded piece of Java that just works as a GUI tool and has no
+network functionality when used with USB or Serial connections.
+
+Godenerg should be instalable in a Raspberry Pi and could be left connected
+to a house LAN acting as a bridge to the inverter. Right now I am using 
+Godenerg to display the inverter data through HTTP into a Raspberry Pi in 
+my living room that uses a OLED to show realtime stats.
+
+
+
+ * Current status:
+
+    - Python 3 compatible. Just tested on Linux. No hope to get it tested on Mac or Windows
+      unless someone helps with that. 
+
+    - So far tested on usb connections, whenever I get my hands on a usb to serial adapter
+      I will test on serial connections. 
+
+    - Project in its infancy, alpha at best, just a couple weeks of coding.
+
+    - Right now CMD tool is not up to date since I am putting all energies into
+      the daemon.
+
 
 ## Testing:
 ```
