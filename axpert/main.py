@@ -32,12 +32,19 @@ from axpert.datalogger import (
 )                                                               # noqa
 
 
+MAX_RETRIES_FAILS = 2 
+
 WATCHDOG_URL = 'http://localhost:{}/cmds?cmd=operation_mode'.format(
     http_conf['port']
 )
 WATCHDOG_MAX_TIMEOUT = 15
 WATCHDOG_INTERVAL = 10
 MAX_CONNECTOR_ACQUIRE_TIME = 10
+
+
+class ShutdownDaemonAndRestart(Exception):
+    pass
+
 
 def output_as_json(args):
     return 'format' in args          \
@@ -167,13 +174,16 @@ def start_watchdog(http_fail_event, datalogger_fail_event):
 
 
 def kill_process(process, process_label):
-    os.kill(process.pid, SIGKILL)
-    sleep(1)
-    log.error(
-        '{} FORCED termination; process alive? -> {}'.format(
-            process_label, process.is_alive()
+    try:
+        os.kill(process.pid, SIGKILL)
+        sleep(1)
+        log.error(
+            '{} FORCED termination; process alive? -> {}'.format(
+                process_label, process.is_alive()
+            )
         )
-    )
+    except Exception as e:
+        log.exception(e)
 
 
 def stop_process(process, process_label):
@@ -186,10 +196,15 @@ def stop_process(process, process_label):
     )
 
 
-def check_process(process, process_start, fail_event, process_label):
+def check_process(process, process_start, fail_event,
+                  process_label, fail_count):
     if not fail_event.is_set():
         return process
 
+    fail_count += 1 
+    if fail_count > MAX_RETRIES_FAILS:
+        raise ShutdownDaemonAndRestart()
+    
     log.error('{} fail event fired'.format(process_label))
     stop_process(process, process_label) 
 
@@ -225,17 +240,26 @@ def run_as_daemon(daemon, args):
             http_server_fail_event, datalogger_server_fail_event
         )
 
+        restart_count_http, restart_count_datalogger = 0, 0
         while True:
             http_server = check_process(
-                http_server, http_server_start, 
-                http_server_fail_event, 'HTTP Server'
+                http_server, http_server_start, http_server_fail_event,
+                'HTTP Server', restart_count_http
             )
             datalogger_server = check_process(
                 datalogger_server, datalogger_server_start, 
-                datalogger_server_fail_event, 'Datalogger Server'
+                datalogger_server_fail_event, 
+                'Datalogger Server', restart_count_datalogger
             )
 
             sleep(1)
+    
+    except ShutdownDaemonAndRestart:
+        kill_process(http_server, 'HTTP Server')
+        kill_process(datalogger_server, 'Datalogger Server')
+        kill_process(datalogger_http_server, 'Datalogger HTTP Server')
+        log.error('Restart all Locks, Events and Processes')
+
     except Exception as e:
         log.exception(e)
 
@@ -285,7 +309,8 @@ if __name__ == '__main__':
             )
             log = logging.getLogger('godenerg')
             log.setLevel(log_level)
-            run_as_daemon(daemon, args)
+            while True:
+                run_as_daemon(daemon, args)
     else:
         log = logging.getLogger('godenerg')
         log.setLevel(log_level)
