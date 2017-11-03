@@ -10,40 +10,41 @@ pytest -v --pyargs axpert
 
 ## Run as daemon
 
-For now this starts a http server that allows quering of commands.
-The idea is for the daemon to also do datalogging and dynamic configuration
-processes to bypass the crappy firmware the axpert has.
-
 ```
- > python3 axpert/main.py --usb -d /dev/hidraw0 --deamon
+ $> python3 axpert/main.py --usb -d /dev/hidraw0 --deamon
 ```
 
-Over the local network:
+* HTTP Server for JSON realtime data usage. Since the nature of the
+  USB / serial communications is limited to a single client. Calls
+  block until the serial / USB is free. So far just status (QPIGS)
+  and (QMOD) commands are implemented. Adding other query commands
+  or set commands will come soon since is just a matter of defining
+  the specifications to a descriptive structure already defined.
 
-```
-http://machine_ip:8889/cmds?cmd=status
-```
 
-or
+    - Status(QPIGS) as JSON:
+    ```
+    http://machine_ip:8889/cmds?cmd=status
+    ```
 
-```
-http://machine_ip:8889/cmds?cmd=operation_mode
-```
+    - Operation Mode (QMOD) as JSON:
+    ```
+    http://machine_ip:8889/cmds?cmd=operation_mode
+    ```
 
-or
+    - Both comibined as JSON (indexed in 2 different keys)
 
-```
-http://machine_ip:8889/cmds?cmd=operation_mode&cmd=status
-```
+    ```
+    http://machine_ip:8889/cmds?cmd=operation_mode&cmd=status
+    ```
 
-or
+    - Both combined as JSON in a single with all key/values merged
+    ```
+    http://machine_ip:8889/cmds?cmd=operation_mode&cmd=status&merge=1
+    ```
 
-```
-http://machine_ip:8889/cmds?cmd=operation_mode&cmd=status&merge=1
-```
-(to merge the 2 json nodes into a single node)
 
-## cmd examples
+## Run as command line tool
 
  ### Get current status values (QPIGS command)
  ```
