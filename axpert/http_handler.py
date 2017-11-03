@@ -12,7 +12,7 @@ from axpert.protocol import CMD_REL
 
 class BaseGodenergHandler(BaseHTTPRequestHandler):
 
-    routes = {} 
+    routes = {}
 
     def do_GET(self):
         parsed_path = urlparse(self.path)

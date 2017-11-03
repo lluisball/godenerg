@@ -4,7 +4,7 @@ from time import sleep
 from datetime import datetime
 from json import dumps as json_dumps
 from math import ceil
-from pygal import Line 
+from pygal import Line
 from pygal.style import Style
 from functools import reduce
 
@@ -93,7 +93,7 @@ def datalogger_create(log, comms_executor, cmds):
             ensure_db_structure(log, db_conn)
 
             while True:
-                status_data = _execute_cmd(status_cmd) 
+                status_data = _execute_cmd(status_cmd)
                 mode_data = _execute_cmd(mode_cmd)
                 if status_data and mode_data:
                     save_datapoint(
@@ -107,7 +107,7 @@ def datalogger_create(log, comms_executor, cmds):
 
 
 def txt_dt_to_int(txt):
-    txt_dt = txt + ((14 - len(txt)) * '0') 
+    txt_dt = txt + ((14 - len(txt)) * '0')
     return int(datetime.strptime(txt_dt, DT_FORMAT).timestamp())
 
 
@@ -115,24 +115,24 @@ def get_last_data_datetime(log):
     with connect(datalogger_conf['db_filename']) as db_conn:
         cursor = db_conn.cursor()
         cursor.execute(
-            'SELECT datetime FROM stats ORDER BY datetime DESC LIMIT 1' 
+            'SELECT datetime FROM stats ORDER BY datetime DESC LIMIT 1'
         )
         dt = cursor.fetchone()
         if dt:
             try:
-                return datetime.fromtimestamp(dt[0])  
+                return datetime.fromtimestamp(dt[0])
             except Exception as e:
                 log.exception(e)
                 return 0
         else:
-            return 0 
+            return 0
 
 
 def get_range(from_dt, to_dt, extract_cols=None,
               as_json=False, raw_data=False, grouped=False):
 
     MAX_GROUPED_ITEMS = 2048
-    
+
     def _build_query(db_conn, params):
         cols_stat = '*' if not extract_cols  else ', '.join(extract_cols)
 
@@ -150,8 +150,8 @@ def get_range(from_dt, to_dt, extract_cols=None,
             )
 
         return '''
-            SELECT {group_coe}, (datetime / {group_coe}), {cols} 
-            FROM stats {where_stat} GROUP BY (datetime / {group_coe}) 
+            SELECT {group_coe}, (datetime / {group_coe}), {cols}
+            FROM stats {where_stat} GROUP BY (datetime / {group_coe})
         '''.format(
                 **dict(
                     group_coe=INTERVAL * ceil(total_items / MAX_GROUPED_ITEMS),
@@ -159,7 +159,7 @@ def get_range(from_dt, to_dt, extract_cols=None,
                     where_stat=where_stat
                 )
             )
-                
+
     def _process_rows(rows):
         return json_dumps(rows) if as_json else '\n'.join(rows)
 
@@ -173,7 +173,7 @@ def get_range(from_dt, to_dt, extract_cols=None,
             from_dt=txt_dt_to_int(from_dt), to_dt=txt_dt_to_int(to_dt)
         )
         cursor = db_conn.cursor()
-        cursor.execute(_build_query(db_conn, params), params) 
+        cursor.execute(_build_query(db_conn, params), params)
         if raw_data:
             return cursor.fetchall()
 
@@ -201,7 +201,7 @@ def create_base_datalogger_handler(log):
 class BaseDataLoggerHandler(BaseGodenergHandler):
 
     routes = {
-        '/graph': 'plot_datalogger' 
+        '/graph': 'plot_datalogger'
     }
 
     MAX_X_LABELS = 20
@@ -210,7 +210,7 @@ class BaseDataLoggerHandler(BaseGodenergHandler):
     def compose_chart_data(self, data, secondary=False):
         datalen = len(data)
         label_mod = ceil(datalen / self.MAX_X_LABELS) \
-            if datalen > self.MAX_X_LABELS else None 
+            if datalen > self.MAX_X_LABELS else None
 
         def _fold_data_point(points, point):
             if secondary:
@@ -229,12 +229,12 @@ class BaseDataLoggerHandler(BaseGodenergHandler):
             if secondary:
                 points['values_2'].append(val_2)
             return points
-    
+
         return reduce(
-            _fold_data_point, enumerate(data), 
+            _fold_data_point, enumerate(data),
             dict(labels=[], values_1=[], values_2=[])
         )
-        
+
     def resolve_y_labels(self, items):
         itemlen = len(items)
         if itemlen <= self.MAX_Y_LABELS:
@@ -253,18 +253,18 @@ class BaseDataLoggerHandler(BaseGodenergHandler):
             opacity_hover='.9',
             transition='400ms ease-in',
             colors=('#3333FF', '#33FF33')
-        ) 
+        )
 
     @staticmethod
     def create_range(data, col_index):
         return (
-            int(min(data, key=lambda i: i[col_index])[col_index]), 
+            int(min(data, key=lambda i: i[col_index])[col_index]),
             int(max(data, key=lambda i: i[col_index])[col_index])
         )
 
     def build_line(self, data, col_2):
         COL_1_INDEX, COL_2_INDEX = 2, 3
-        
+
         range_1_from, range_1_to = \
             BaseDataLoggerHandler.create_range(data, COL_1_INDEX)
 
@@ -273,8 +273,8 @@ class BaseDataLoggerHandler(BaseGodenergHandler):
                 BaseDataLoggerHandler.create_range(data, COL_2_INDEX)
 
         chart = Line(
-            show_dots=False, fill=False if col_2 else True, 
-            show_x_guides=False, show_y_guides=True, 
+            show_dots=False, fill=False if col_2 else True,
+            show_x_guides=False, show_y_guides=True,
             range=(range_1_from, range_1_to),
             secondary_range=(range_2_from, range_2_to) if col_2 else None,
             x_label_rotation=40, title='Inverter Stats',
@@ -306,5 +306,5 @@ class BaseDataLoggerHandler(BaseGodenergHandler):
         if col_2:
             line_chart.add(col_2[:14], chart_data['values_2'], secondary=True)
 
-        line_chart.x_labels = chart_data['labels'] 
+        line_chart.x_labels = chart_data['labels']
         return line_chart.render()

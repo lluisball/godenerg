@@ -32,7 +32,7 @@ from axpert.datalogger import (
 )                                                               # noqa
 
 
-MAX_RETRIES_FAILS = 2 
+MAX_RETRIES_FAILS = 2
 
 WATCHDOG_URL = 'http://localhost:{}/cmds?cmd=operation_mode'.format(
     http_conf['port']
@@ -75,7 +75,7 @@ def start_http_server(comms_executor):
     )
     process.start()
     log.info('HTTP server started')
-    return process 
+    return process
 
 
 def start_process_executer(connector, cmd):
@@ -110,7 +110,7 @@ def atomic_execute(comms_lock, connector_cls, devices, cmd):
     try:
         acquired_lock = comms_lock.acquire(timeout=10)
         if not acquired_lock:
-            return Response(status=Status.KO, data=None) 
+            return Response(status=Status.KO, data=None)
 
         with connector_cls(devices=devices, log=log) as connector:
             return execute(log, connector, cmd)
@@ -119,7 +119,7 @@ def atomic_execute(comms_lock, connector_cls, devices, cmd):
         log.exception(e)
 
     finally:
-        if acquired_lock:  
+        if acquired_lock:
             comms_lock.release()
 
 
@@ -201,20 +201,20 @@ def check_process(process, process_start, fail_event,
     if not fail_event.is_set():
         return process, fail_count
 
-    fail_count += 1 
+    fail_count += 1
     if fail_count > MAX_RETRIES_FAILS:
         raise ShutdownDaemonAndRestart()
-    
+
     log.error('{} fail event fired'.format(process_label))
-    stop_process(process, process_label) 
+    stop_process(process, process_label)
 
     if process.is_alive():
         kill_process(process, process_label)
 
-    process = process_start() 
+    process = process_start()
     fail_event.clear()
 
-    return process, fail_count 
+    return process, fail_count
 
 
 def run_as_daemon(daemon, args):
@@ -232,9 +232,9 @@ def run_as_daemon(daemon, args):
         datalogger_server_start = partial(start_datalogger, comms_executor)
         datalogger_http_server_start = partial(start_datalogger_http)
 
-        http_server = http_server_start() 
-        datalogger_server = datalogger_server_start() 
-        datalogger_http_server = datalogger_http_server_start() 
+        http_server = http_server_start()
+        datalogger_server = datalogger_server_start()
+        datalogger_http_server = datalogger_http_server_start()
 
         start_watchdog(
             http_server_fail_event, datalogger_server_fail_event
@@ -247,13 +247,13 @@ def run_as_daemon(daemon, args):
                 'HTTP Server', restart_count_http
             )
             datalogger_server, restart_count_datalogger = check_process(
-                datalogger_server, datalogger_server_start, 
-                datalogger_server_fail_event, 
+                datalogger_server, datalogger_server_start,
+                datalogger_server_fail_event,
                 'Datalogger Server', restart_count_datalogger
             )
 
             sleep(1)
-    
+
     except ShutdownDaemonAndRestart:
         kill_process(http_server, 'HTTP Server')
         kill_process(datalogger_server, 'Datalogger Server')
@@ -268,11 +268,11 @@ def extract(args):
 
     def _get_dt(dt):
         out_formats = {
-            8: '%Y-%m-%d', 10: '%Y-%m-%d %H', 
+            8: '%Y-%m-%d', 10: '%Y-%m-%d %H',
             12: '%Y-%m-%d %H:%M', 14: '%Y-%m-%d %H:%M:%S'
         }
         in_formats = {
-            8: '%Y%m%d', 10:'%Y%m%d%H', 
+            8: '%Y%m%d', 10:'%Y%m%d%H',
             12: '%Y%m%d%H%M', 14: '%Y%m%d%H%M%S'
         }
         original_dt = datetime.strptime(dt, in_formats[len(dt)])

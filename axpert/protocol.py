@@ -114,7 +114,7 @@ def status_json_formatter(raw, serialize=True):
         ('mask_b', to_str), ('mask_c', to_str),
         ('pv_watts', to_int), ('mask_d', to_str)
     )
-    
+
     if not raw:
         return None
 
