@@ -199,7 +199,7 @@ def stop_process(process, process_label):
 def check_process(process, process_start, fail_event,
                   process_label, fail_count):
     if not fail_event.is_set():
-        return process
+        return process, fail_count
 
     fail_count += 1 
     if fail_count > MAX_RETRIES_FAILS:
@@ -214,7 +214,7 @@ def check_process(process, process_start, fail_event,
     process = process_start() 
     fail_event.clear()
 
-    return process 
+    return process, fail_count 
 
 
 def run_as_daemon(daemon, args):
@@ -242,11 +242,11 @@ def run_as_daemon(daemon, args):
 
         restart_count_http, restart_count_datalogger = 0, 0
         while True:
-            http_server = check_process(
+            http_server, restart_count_http = check_process(
                 http_server, http_server_start, http_server_fail_event,
                 'HTTP Server', restart_count_http
             )
-            datalogger_server = check_process(
+            datalogger_server, restart_count_datalogger = check_process(
                 datalogger_server, datalogger_server_start, 
                 datalogger_server_fail_event, 
                 'Datalogger Server', restart_count_datalogger
@@ -311,6 +311,7 @@ if __name__ == '__main__':
             log.setLevel(log_level)
             while True:
                 run_as_daemon(daemon, args)
+                sleep(5)
     else:
         log = logging.getLogger('godenerg')
         log.setLevel(log_level)

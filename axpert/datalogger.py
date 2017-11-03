@@ -243,39 +243,47 @@ class BaseDataLoggerHandler(BaseGodenergHandler):
         step = ceil(itemlen / self.MAX_Y_LABELS)
         return items[::step]
 
-    def build_line(self, data, col_2):
-        COL_1_V, COL_2_V = 2, 3
-        custom_style = Style(
-            background='transparent',
-            plot_background='transparent',
+    @staticmethod
+    def custom_style(col_2):
+        return Style(
             foreground='#000000',
-            foreground_strong='#FFFFFF',
+            foreground_strong='#FFA500' if col_2 else '#333333',
             foreground_subtle='#630C0D',
             opacity='.7',
             opacity_hover='.9',
             transition='400ms ease-in',
-            colors=('#E853A0', '#E89B53')
+            colors=('#3333FF', '#33FF33')
+        ) 
+
+    @staticmethod
+    def create_range(data, col_index):
+        return (
+            int(min(data, key=lambda i: i[col_index])[col_index]), 
+            int(max(data, key=lambda i: i[col_index])[col_index])
         )
 
-        range_1_from = int(min(data, key=lambda i: i[COL_1_V])[COL_1_V]) 
-        range_1_to = int(max(data, key=lambda i: i[COL_1_V])[COL_1_V])
+    def build_line(self, data, col_2):
+        COL_1_INDEX, COL_2_INDEX = 2, 3
+        
+        range_1_from, range_1_to = \
+            BaseDataLoggerHandler.create_range(data, COL_1_INDEX)
 
         if col_2:
-            range_2_from = int(min(data, key=lambda i: i[COL_2_V])[COL_2_V]) 
-            range_2_to = int(max(data, key=lambda i: i[COL_2_V])[COL_2_V])
+            range_2_from, range_2_to = \
+                BaseDataLoggerHandler.create_range(data, COL_2_INDEX)
 
         chart = Line(
-            show_dots=False, fill=True, show_x_guides=False, 
+            show_dots=False, fill=False if col_2 else True, 
+            show_x_guides=False, show_y_guides=True, 
             range=(range_1_from, range_1_to),
             secondary_range=(range_2_from, range_2_to) if col_2 else None,
             x_label_rotation=40, title='Inverter Stats',
-            style=custom_style
+            style=BaseDataLoggerHandler.custom_style(col_2)
         )
         chart.y_labels = self.resolve_y_labels(
             range(range_1_from, range_1_to + 1)
         )
         return chart
-
 
     @html_response
     def plot_datalogger(self, req):
@@ -290,14 +298,13 @@ class BaseDataLoggerHandler(BaseGodenergHandler):
         )
 
         line_chart = self.build_line(data, col_2)
-      
-                
+
         chart_data = self.compose_chart_data(
             data, secondary=(col_2!=None)
         )
-        line_chart.add(col_1, chart_data['values_1'])
+        line_chart.add(col_1[:11], chart_data['values_1'])
         if col_2:
-            line_chart.add(col_2, chart_data['values_2'], secondary=True)
+            line_chart.add(col_2[:11], chart_data['values_2'], secondary=True)
 
         line_chart.x_labels = chart_data['labels'] 
         return line_chart.render()
