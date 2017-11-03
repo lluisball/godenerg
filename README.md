@@ -57,21 +57,38 @@ I will test on serial connections.
         from=201711021557&to=2017110219
         ``` 
 
-    - First desired column: `col_1=bat_volt`
+    - First desired column format: `col_1=bat_volt`
 
-    - Second desired column (optional): `col_2=pv_watts`
-
-    - Example 1, graphing `batt_charge_amps` vs `pv_amps` for the third of November:
+    - Second desired column format (optional): `col_2=pv_watts`
     
-        `http://machine_ip:8890/graph?from=20171103&to=20171104&col_1=batt_charge_amps&col_2=pv_amps`
-        ![2 cols example](docs/graphing_datalogger_2_cols.png)
-
-
-    - Example 2, graphing `batt_volt` for third of November:
+    - Example 1, graphing `batt_volt` for third of November:
 
        `http://machine_ip:8890/graph?from=20171103&to=20171104&col_1=batt_volt`
         ![1 col example](docs/graphing_datalogger_1_col.png)
 
+    - Example 2, graphing `batt_charge_amps` vs `pv_amps` for the third of November:
+    
+        `http://machine_ip:8890/graph?from=20171103&to=20171104&col_1=batt_charge_amps&col_2=pv_amps`
+        ![2 cols example](docs/graphing_datalogger_2_cols.png)
+
+    - Available values are:
+        * `grid_volt` 
+        * `grid_freq `
+        * `ac_volt`
+        * `ac_freq`
+        * `ac_va`
+        * `ac_watt`
+        * `load_percent`
+        * `bus_volt`
+        * `batt_volt`
+        * `batt_charge_amps`
+        * `batt_capacity`
+        * `temp`
+        * `pv_amps`
+        * `pv_volts`
+        * `batt_volt_scc`
+        * `batt_discharge_amps`
+        * `pv_watts`
 
 
 * HTTP Server for JSON realtime data usage. Since the nature of the
