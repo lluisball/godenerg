@@ -2,3 +2,4 @@ pyserial==3.4
 crc16==0.1.1
 hidapi==0.7.99.post21
 python-daemon==2.1.2
+pygal==2.4.0
