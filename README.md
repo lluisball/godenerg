@@ -16,6 +16,9 @@ my living room that uses a OLED to show realtime stats.
 
  * Current status:
 
+    - The USB interface with the Axpert inverter is fairly unstable, 
+      the daemon takes care of watching over himself and restarts gracefuly if any issues happen. 
+
     - Python 3 compatible. Just tested on Linux. No hope to get it tested on Mac or Windows
       unless someone helps with that. 
 
@@ -36,7 +39,7 @@ my living room that uses a OLED to show realtime stats.
 ## Run as daemon
 
 ```
- $> python3 axpert/main.py --usb -d /dev/hidraw0 --deamon
+ $> python3 axpert/main.py --usb -d /dev/hidraw0 --daemon
 ```
 
 * Datalogger starts up and starts logging QPIGS command into a sqlite 
