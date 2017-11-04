@@ -32,7 +32,7 @@ from axpert.datalogger import (
 )                                                               # noqa
 
 
-MAX_RETRIES_FAILS = 2
+MAX_RETRIES_FAILS = 1 
 
 WATCHDOG_URL = 'http://localhost:{}/cmds?cmd=operation_mode'.format(
     http_conf['port']
