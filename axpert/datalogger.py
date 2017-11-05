@@ -204,7 +204,7 @@ class BaseDataLoggerHandler(BaseGodenergHandler):
         '/graph': 'plot_datalogger'
     }
 
-    MAX_X_LABELS = 20
+    MAX_X_LABELS = 40
     MAX_Y_LABELS = 20
 
     def compose_chart_data(self, data, secondary=False):
@@ -247,12 +247,12 @@ class BaseDataLoggerHandler(BaseGodenergHandler):
     def custom_style(col_2):
         return Style(
             foreground='#000000',
-            foreground_strong='#FFA500' if col_2 else '#333333',
+            foreground_strong='#666666' if col_2 else '#333333',
             foreground_subtle='#630C0D',
-            opacity='.7',
-            opacity_hover='.9',
-            transition='400ms ease-in',
-            colors=('#3333FF', '#33FF33')
+            opacity='.2',
+            opacity_hover='.5',
+            transition='200ms ease-in',
+            colors=('#3333FF', '#FF3333')
         )
 
     @staticmethod
@@ -273,11 +273,11 @@ class BaseDataLoggerHandler(BaseGodenergHandler):
                 BaseDataLoggerHandler.create_range(data, COL_2_INDEX)
 
         chart = Line(
-            show_dots=False, fill=False if col_2 else True,
+            show_dots=False, fill=True if col_2 else True,
             show_x_guides=False, show_y_guides=True,
             range=(range_1_from, range_1_to),
             secondary_range=(range_2_from, range_2_to) if col_2 else None,
-            x_label_rotation=40, title='Inverter Stats',
+            x_label_rotation=70, title='Inverter Stats',
             style=BaseDataLoggerHandler.custom_style(col_2)
         )
         chart.y_labels = self.resolve_y_labels(
