@@ -24,13 +24,15 @@ from axpert.connector import resolve_connector                  # noqa
 from axpert.cmd_parser import parse_args                        # noqa
 from axpert.http_handler import http_server_create              # noqa
 from axpert.protocol import (
-    CMD_REL, execute, Status, Response
+    CMD_REL, execute, Status, Response, CmdSpec
 )                                                               # noqa
 from axpert.datalogger import (
     datalogger_create, get_range, DT_FORMAT,
     get_last_data_datetime, datalogger_http_server_create
 )                                                               # noqa
 
+FLOAT_VOL = 52.8
+CHARGE_VOL = 58.4
 
 MAX_RETRIES_FAILS = 1 
 
@@ -78,9 +80,15 @@ def start_http_server(comms_executor):
     return process
 
 
-def start_process_executer(connector, cmd):
+def start_process_executer(comms_executor):
     log.info('Starting process executer')
+    process = Process(
+        target=tasks_processor,
+        args=[log, comms_executor]
+    )
+    process.start()
     log.info('Started process executer')
+    return process
 
 
 def start_datalogger(comms_executor):
@@ -217,6 +225,38 @@ def check_process(process, process_start, fail_event,
     return process, fail_count
 
 
+def tasks_processor(log, executor):
+    
+    def _get_float_volt():
+        try:
+            response = executor(CMD_REL.get('settings'))
+            return float(response.data.split(' ')[11])
+        except:
+            return None
+
+    while True:
+        try:
+            now=datetime.now()
+            if now.hour == 14 and now.minute in [30, 40] \
+                    and now.second in [1, 10, 20, 30, 40, 50]:
+                float_v = _get_float_volt()
+                if float_v and float_v > FLOAT_VOL:
+                    log.info('Changing float charge setting to %.1f' % FLOAT_VOL)
+                    executor(CmdSpec(code='PBFT', size=9, val='%.1f'% FLOAT_VOL))
+
+            if now.hour == 5 and now.minute in [1, 5] \
+                    and now.second in [1, 10, 20, 30, 40, 50]:
+                float_v = _get_float_volt()
+                if float_v and _get_float_volt() < CHARGE_VOL:
+                    log.info('Changing float charge setting to %.1f' % CHARGE_VOL)
+                    executor(CmdSpec(code='PBFT', size=9, val='%.1f'% CHARGE_VOL))
+
+        except Exception as e:
+            log.exception(e)
+
+        sleep(1)    
+
+
 def run_as_daemon(daemon, args):
     connector_cls = resolve_connector(args)
     devices = args['devices']
@@ -230,11 +270,14 @@ def run_as_daemon(daemon, args):
         )
         http_server_start = partial(start_http_server, comms_executor)
         datalogger_server_start = partial(start_datalogger, comms_executor)
+        task_processor_start = partial(start_process_executer, comms_executor)
+
         datalogger_http_server_start = partial(start_datalogger_http)
 
         http_server = http_server_start()
         datalogger_server = datalogger_server_start()
         datalogger_http_server = datalogger_http_server_start()
+        task_processor = task_processor_start()
 
         start_watchdog(
             http_server_fail_event, datalogger_server_fail_event
@@ -251,13 +294,13 @@ def run_as_daemon(daemon, args):
                 datalogger_server_fail_event,
                 'Datalogger Server', restart_count_datalogger
             )
-
             sleep(1)
 
     except ShutdownDaemonAndRestart:
         kill_process(http_server, 'HTTP Server')
         kill_process(datalogger_server, 'Datalogger Server')
         kill_process(datalogger_http_server, 'Datalogger HTTP Server')
+        kill_process(task_processor, 'Task Processor')
         log.error('Restart all Locks, Events and Processes')
 
     except Exception as e:

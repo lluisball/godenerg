@@ -149,6 +149,14 @@ CMD_REL = {
         code='QPIGS', size=110, val='',
         json=status_json_formatter
     ),
+    'settings': CmdSpec(
+        code='QPIRI', size=90, val='',
+        json=None
+    ),
+    'default_settings': CmdSpec(
+        code='QDI', size=81, val='',
+        json=None
+    ),
     'operation_mode': CmdSpec(
         code='QMOD', size=5, val='',
         json=operation_json_formatter
