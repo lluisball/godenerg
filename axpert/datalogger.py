@@ -15,69 +15,131 @@ from axpert.http_handler import (
 
 DT_FORMAT = '%Y%m%d%H%M%S'
 INTERVAL = datalogger_conf['interval']
+LAST_INTERVAL = datalogger_conf['last_interval']
+SAMPLES = datalogger_conf['samples']
 
-COLS = [
-    ('datetime', 'INTEGER'),
-    ('grid_volt', 'REAL'),
-    ('grid_freq', 'REAL'),
-    ('ac_volt', 'REAL'),
-    ('ac_freq', 'REAL'),
-    ('ac_va', 'INTEGER'),
-    ('ac_watt', 'INTEGER'),
-    ('load_percent', 'INTEGER'),
-    ('bus_volt', 'INTEGER'),
-    ('batt_volt', 'REAL'),
-    ('batt_charge_amps', 'INTEGER'),
-    ('batt_capacity', 'INTEGER'),
-    ('temp', 'INTEGER'),
-    ('pv_amps', 'INTEGER'),
-    ('pv_volts', 'REAL'),
-    ('batt_volt_scc', 'REAL'),
-    ('batt_discharge_amps', 'INTEGER'),
-    ('raw_status', 'TEXT'),
-    ('mask_b', 'TEXT'),
-    ('mask_c', 'TEXT'),
-    ('pv_watts', 'INTEGER'),
-    ('mask_d', 'TEXT'),
-    ('mode', 'TEXT')
-]
+DB = {'stats': [
+        ('datetime', 'INTEGER'), ('grid_volt', 'REAL'),
+        ('grid_freq', 'REAL'), ('ac_volt', 'REAL'),
+        ('ac_freq', 'REAL'), ('ac_va', 'INTEGER'),
+        ('ac_watt', 'INTEGER'), ('load_percent', 'INTEGER'),
+        ('bus_volt', 'INTEGER'), ('batt_volt', 'REAL'),
+        ('batt_charge_amps', 'INTEGER'), ('batt_capacity', 'INTEGER'),
+        ('temp', 'INTEGER'), ('pv_amps', 'INTEGER'),
+        ('pv_volts', 'REAL'), ('batt_volt_scc', 'REAL'),
+        ('batt_discharge_amps', 'INTEGER'), ('raw_status', 'TEXT'),
+        ('mask_b', 'TEXT'), ('mask_c', 'TEXT'),
+        ('pv_watts', 'INTEGER'), ('mask_d', 'TEXT'),
+        ('mode', 'TEXT')
+    ],
 
-CREATE_DB_STATEMENT = 'CREATE TABLE stats ({})'
-EXPECTED_TABLES = ('stats', )
+    'last_stats': [
+        ('datetime', 'INTEGER'), 
+        ('batt_volt', 'REAL'),
+        ('batt_charge_amps', 'INTEGER'), 
+        ('pv_amps', 'INTEGER'), ('pv_watts', 'INTEGER')
+    ]
+}
 
+INDEXES = {
+    'stats': [
+        'batt_volt', 'batt_charge_amps', 'pv_amps', 'pv_watts', 'ac_watt'
+    ],
+    'last_stats': [
+        'batt_volt', 'batt_charge_amps', 'pv_amps', 'pv_watts'     
+    ]
+}
+
+CREATE_TABLE_STATEMENT = 'CREATE TABLE {} ({})'
+
+
+def ensure_db_indexes(log, tab, cursor):
+    try:
+        for col in INDEXES[tab]:
+            cursor.execute(
+                'CREATE INDEX idx_{tab}_{col} ON '
+                '{tab} (datetime, {col})'.format(
+                    tab=tab, col=col
+                )
+            )
+            log.info('Created index idx_{}_{}'.format(tab, col))
+    except Exception as e:
+        log.exception(e)
 
 def ensure_db_structure(log, db_conn):
     query = "SELECT name FROM sqlite_master WHERE type='table'"
     table_names = [row[0] for row in db_conn.cursor().execute(query)]
-    if not set(EXPECTED_TABLES) - set(table_names):
+    diff = set(DB.keys()) - set(table_names)
+    if not diff:
         log.debug('No difference in tables, not recreating')
         return
 
-    log.info('Tables not found, creating database structure')
+    log.info('Some or all tables missing, creating missing database structure')
     cursor = db_conn.cursor()
-    cursor.execute(
-        CREATE_DB_STATEMENT.format(
-           ', '.join('{} {}'.format(*item) for item in COLS)
+    not_created = ((tab, cols) for tab, cols in DB.items() if tab in diff)
+    for tab, cols in not_created:
+        cursor.execute(
+            CREATE_TABLE_STATEMENT.format(
+               tab, ', '.join('{} {}'.format(*item) for item in cols)
+            )
         )
-    )
+        ensure_db_indexes(log, tab, cursor)
+
     db_conn.commit()
     log.info('Database structure created')
 
 
-def save_datapoint(log, db_conn, data):
+def save_datapoint(log, db_conn, tab_name, data):
     try:
+        COLS = DB[tab_name]
         cursor = db_conn.cursor()
-        log.debug('Saving datapoint')
+        log.debug('Saving datapoint for {}'.format(tab_name))
         data['datetime'] = int(datetime.now().timestamp())
         column_values = [data[col_name] for col_name, _ in COLS]
         column_vars = ', '.join('?' for _ in range(len(COLS)))
-        statement = 'INSERT INTO stats VALUES ({})'.format(column_vars)
+        statement = 'INSERT INTO {} VALUES ({})'.format(
+            tab_name, column_vars
+        )
         log.debug(column_values)
         cursor.execute(statement, column_values)
         db_conn.commit()
     except Exception as e:
         log.error('Error saving datapoint')
         log.exception(e)
+
+
+def delete_first_datapoint(db_conn):
+    cursor = db_conn.cursor()
+    count, = cursor.execute('SELECT COUNT(1) FROM last_stats').fetchone()  
+    
+    if count < SAMPLES:
+        return 
+    
+    first_dt, = cursor.execute(
+        'SELECT datetime FROM last_stats ORDER BY datetime ASC LIMIT 1'
+    ).fetchone()
+
+    cursor.execute('DELETE FROM last_stats WHERE datetime=?', [first_dt])
+    db_conn.commit()
+
+
+def datalogger_interval_record(log, db_conn, status_data, mode_data, last):
+    now = int(datetime.now().timestamp()) 
+    if (last + INTERVAL) > now:
+        return last 
+
+    if status_data and mode_data:
+        save_datapoint(
+            log, db_conn, 'stats', {**status_data, **mode_data}
+        )
+
+    return now
+
+def datalogger_sampler_record(log, db_conn, status_data, mode_data):
+    delete_first_datapoint(db_conn)
+    save_datapoint(
+        log, db_conn, 'last_stats', {**status_data, **mode_data}
+    )
 
 
 def datalogger_create(log, comms_executor, cmds):
@@ -92,14 +154,17 @@ def datalogger_create(log, comms_executor, cmds):
         with connect(datalogger_conf['db_filename']) as db_conn:
             ensure_db_structure(log, db_conn)
 
+            last = 0 
             while True:
                 status_data = _execute_cmd(status_cmd)
                 mode_data = _execute_cmd(mode_cmd)
-                if status_data and mode_data:
-                    save_datapoint(
-                        log, db_conn, {**status_data, **mode_data}
-                    )
-                sleep(INTERVAL)
+                last = datalogger_interval_record(
+                    log, db_conn, status_data, mode_data, last
+                )
+                datalogger_sampler_record(
+                    log, db_conn, status_data, mode_data
+                )
+                sleep(LAST_INTERVAL)
 
     except Exception as e:
         log.error('Exception in datalogger')

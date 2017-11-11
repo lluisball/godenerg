@@ -113,15 +113,13 @@ def start_datalogger_http():
     return datalogger_http
 
 
-def atomic_execute(comms_lock, connector_cls, devices, cmd):
+def atomic_execute(comms_lock, connector, cmd):
     acquired_lock = False
     try:
         acquired_lock = comms_lock.acquire(timeout=10)
         if not acquired_lock:
             return Response(status=Status.KO, data=None)
-
-        with connector_cls(devices=devices, log=log) as connector:
-            return execute(log, connector, cmd)
+        return execute(log, connector, cmd)
 
     except Exception as e:
         log.exception(e)
@@ -235,38 +233,50 @@ def tasks_processor(log, executor):
             return None
 
     while True:
-        try:
-            now=datetime.now()
-            if now.hour == 14 and now.minute in [30, 40] \
-                    and now.second in [1, 10, 20, 30, 40, 50]:
-                float_v = _get_float_volt()
-                if float_v and float_v > FLOAT_VOL:
-                    log.info('Changing float charge setting to %.1f' % FLOAT_VOL)
-                    executor(CmdSpec(code='PBFT', size=9, val='%.1f'% FLOAT_VOL))
+        #try:
+        #    now=datetime.now()
+        #    if now.hour == 14 and now.minute in [35, 40] \
+        #            and now.second in [1, 10, 20, 30, 40, 50]:
+        #        float_v = _get_float_volt()
+        #        if float_v and float_v > FLOAT_VOL:
+        #            log.info('Changing float charge setting to %.1f' % FLOAT_VOL)
+        #            executor(CmdSpec(code='PBFT', size=9, val='%.1f'% FLOAT_VOL, json=None))
 
-            if now.hour == 5 and now.minute in [1, 5] \
-                    and now.second in [1, 10, 20, 30, 40, 50]:
-                float_v = _get_float_volt()
-                if float_v and _get_float_volt() < CHARGE_VOL:
-                    log.info('Changing float charge setting to %.1f' % CHARGE_VOL)
-                    executor(CmdSpec(code='PBFT', size=9, val='%.1f'% CHARGE_VOL))
+        #    if now.hour == 5 and now.minute in [1, 5] \
+        #            and now.second in [1, 10, 20, 30, 40, 50]:
+        #        float_v = _get_float_volt()
+        #        if float_v and _get_float_volt() < CHARGE_VOL:
+        #            log.info('Changing float charge setting to %.1f' % CHARGE_VOL)
+        #            executor(CmdSpec(code='PBFT', size=9, val='%.1f'% CHARGE_VOL, json=None))
 
-        except Exception as e:
-            log.exception(e)
+        #except Exception as e:
+        #    log.exception(e)
 
         sleep(1)    
 
 
-def run_as_daemon(daemon, args):
-    connector_cls = resolve_connector(args)
-    devices = args['devices']
+def comms(fnx):
+    def _inner(*args, **kwargs):
+        try:
+            connector_cls = resolve_connector(args[1])
+            devices = args[1]['devices']
+            with connector_cls(devices=args[1]['devices'], log=log) as connector:
+                kwargs['connector'] = connector
+                return fnx(*args, **kwargs)
+        except Exception as e:
+            log.exception(e)
+    return _inner
+
+
+@comms
+def run_as_daemon(daemon, args, connector=None):
     log.info('Starting Godenerg as daemon')
     http_server_fail_event = Event()        # Thread Event
     datalogger_server_fail_event = Event()  # Thread Event
     comms_lock = Lock()                     # Process Lock
     try:
         comms_executor = partial(
-            atomic_execute, comms_lock, connector_cls, devices
+            atomic_execute, comms_lock, connector
         )
         http_server_start = partial(start_http_server, comms_executor)
         datalogger_server_start = partial(start_datalogger, comms_executor)
