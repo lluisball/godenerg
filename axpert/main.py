@@ -223,37 +223,6 @@ def check_process(process, process_start, fail_event,
     return process, fail_count
 
 
-def tasks_processor(log, executor):
-    
-    def _get_float_volt():
-        try:
-            response = executor(CMD_REL.get('settings'))
-            return float(response.data.split(' ')[11])
-        except:
-            return None
-
-    while True:
-        #try:
-        #    now=datetime.now()
-        #    if now.hour == 14 and now.minute in [35, 40] \
-        #            and now.second in [1, 10, 20, 30, 40, 50]:
-        #        float_v = _get_float_volt()
-        #        if float_v and float_v > FLOAT_VOL:
-        #            log.info('Changing float charge setting to %.1f' % FLOAT_VOL)
-        #            executor(CmdSpec(code='PBFT', size=9, val='%.1f'% FLOAT_VOL, json=None))
-
-        #    if now.hour == 5 and now.minute in [1, 5] \
-        #            and now.second in [1, 10, 20, 30, 40, 50]:
-        #        float_v = _get_float_volt()
-        #        if float_v and _get_float_volt() < CHARGE_VOL:
-        #            log.info('Changing float charge setting to %.1f' % CHARGE_VOL)
-        #            executor(CmdSpec(code='PBFT', size=9, val='%.1f'% CHARGE_VOL, json=None))
-
-        #except Exception as e:
-        #    log.exception(e)
-
-        sleep(1)    
-
 
 def comms(fnx):
     def _inner(*args, **kwargs):
@@ -262,8 +231,9 @@ def comms(fnx):
             devices = args[1]['devices']
             with connector_cls(devices=args[1]['devices'], log=log) as connector:
                 kwargs['connector'] = connector
-                return fnx(*args, **kwargs)
+                fnx(*args, **kwargs)
         except Exception as e:
+            log.error("Connection to inverter failed")
             log.exception(e)
     return _inner
 

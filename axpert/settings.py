@@ -15,3 +15,12 @@ datalogger_conf = {
     'samples': 7200,
     'port': 8890
 }
+
+charger_conf = {
+    'max_charge_amps': 60,
+    'float_volt': 52.8,
+    'absorbtion_volt': 58.4,
+
+    'absoption_amps_threshold': 7,
+    'max_absorption_time': 60 * 4,
+}
