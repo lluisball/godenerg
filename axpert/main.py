@@ -233,24 +233,35 @@ def tasks_processor(log, executor):
             return None
 
     while True:
-        #try:
-        #    now=datetime.now()
-        #    if now.hour == 14 and now.minute in [35, 40] \
-        #            and now.second in [1, 10, 20, 30, 40, 50]:
-        #        float_v = _get_float_volt()
-        #        if float_v and float_v > FLOAT_VOL:
-        #            log.info('Changing float charge setting to %.1f' % FLOAT_VOL)
-        #            executor(CmdSpec(code='PBFT', size=9, val='%.1f'% FLOAT_VOL, json=None))
+        try:
+            now=datetime.now()
+            if now.hour in [11, 12, 13, 14] and now.minute in [1, 30, 45] and now.second in [1, 30]:
+                float_v = _get_float_volt()
+                if float_v and float_v > FLOAT_VOL:
+                    cmd = CMD_REL.get('status')
+                    response = executor(cmd)
+                    data = cmd.json(response.data, serialize=False) 
+                    if 58.2 < data['batt_volt'] < 58.6 and data['batt_charge_amps'] <= 6: 
+                        log.info('Detected batts ok and amps ok!')
+                        log.info('Changing float charge setting to %.1f' % FLOAT_VOL)
+                        executor(CmdSpec(code='PBFT', size=9, val='%.1f'% FLOAT_VOL, json=None))
 
-        #    if now.hour == 5 and now.minute in [1, 5] \
-        #            and now.second in [1, 10, 20, 30, 40, 50]:
-        #        float_v = _get_float_volt()
-        #        if float_v and _get_float_volt() < CHARGE_VOL:
-        #            log.info('Changing float charge setting to %.1f' % CHARGE_VOL)
-        #            executor(CmdSpec(code='PBFT', size=9, val='%.1f'% CHARGE_VOL, json=None))
+            if now.hour == 15 and now.minute in [1, 5] \
+                    and now.second in [1, 10, 20, 30, 40, 50]:
+                float_v = _get_float_volt()
+                if float_v and float_v > FLOAT_VOL:
+                    log.info('Changing float charge setting to %.1f' % FLOAT_VOL)
+                    executor(CmdSpec(code='PBFT', size=9, val='%.1f'% FLOAT_VOL, json=None))
 
-        #except Exception as e:
-        #    log.exception(e)
+            if now.hour == 5 and now.minute in [1, 5] \
+                    and now.second in [1, 10, 20, 30, 40, 50]:
+                float_v = _get_float_volt()
+                if float_v and _get_float_volt() < CHARGE_VOL:
+                    log.info('Changing float charge setting to %.1f' % CHARGE_VOL)
+                    executor(CmdSpec(code='PBFT', size=9, val='%.1f'% CHARGE_VOL, json=None))
+
+        except Exception as e:
+            log.exception(e)
 
         sleep(1)    
 
