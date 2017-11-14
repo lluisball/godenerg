@@ -150,7 +150,7 @@ CMD_REL = {
         json=status_json_formatter
     ),
     'settings': CmdSpec(
-        code='QPIRI', size=90, val='',
+        code='QPIRI', size=110, val='',
         json=None
     ),
     'default_settings': CmdSpec(
