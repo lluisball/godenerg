@@ -292,7 +292,6 @@ def run_as_daemon(daemon, args, connector=None):
         http_server_start = partial(start_http_server, comms_executor)
         datalogger_server_start = partial(start_datalogger, comms_executor)
         task_processor_start = partial(start_process_executer, comms_executor)
-
         datalogger_http_server_start = partial(start_datalogger_http)
 
         http_server = http_server_start()
