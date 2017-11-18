@@ -235,13 +235,14 @@ def tasks_processor(log, executor):
     while True:
         try:
             now=datetime.now()
-            if now.hour in [11, 12, 13, 14] and now.minute in [1, 30, 45] and now.second in [1, 30]:
+            if now.hour in [11, 12, 13, 14] and now.minute in [1, 10, 20, 30, 40, 50] and now.second in [1, 30]:
                 float_v = _get_float_volt()
                 if float_v and float_v > FLOAT_VOL:
                     cmd = CMD_REL.get('status')
                     response = executor(cmd)
                     data = cmd.json(response.data, serialize=False) 
-                    if 58.2 < float(data['batt_volt']) < 58.6 and int(data['batt_charge_amps']) <= 6: 
+                    available_amps = int(data['ac_watt']) < 300 
+                    if 58.2 < float(data['batt_volt']) < 58.6 and int(data['batt_charge_amps']) <= 7 and available_amps: 
                         log.info('Detected batts ok and amps ok!')
                         log.info('Changing float charge setting to %.1f' % FLOAT_VOL)
                         executor(CmdSpec(code='PBFT', size=11, val='%.1f'% FLOAT_VOL, json=None))
