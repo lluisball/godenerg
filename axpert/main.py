@@ -225,7 +225,6 @@ def check_process(process, process_start, fail_event,
     return process, fail_count
 
 
-
 def comms(fnx):
     def _inner(*args, **kwargs):
         try:
@@ -250,6 +249,7 @@ def run_as_daemon(daemon, args, connector=None):
         comms_executor = partial(
             atomic_execute, comms_lock, connector
         )
+
         http_server_start = partial(start_http_server, comms_executor)
         datalogger_server_start = partial(start_datalogger, comms_executor)
         datalogger_http_server_start = partial(start_datalogger_http)

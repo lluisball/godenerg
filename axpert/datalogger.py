@@ -137,9 +137,10 @@ def datalogger_interval_record(log, db_conn, status_data, mode_data, last):
 
 def datalogger_sampler_record(log, db_conn, status_data, mode_data):
     delete_first_datapoint(db_conn)
-    save_datapoint(
-        log, db_conn, 'last_stats', {**status_data, **mode_data}
-    )
+    if status_data and mode_data:
+        save_datapoint(
+            log, db_conn, 'last_stats', {**status_data, **mode_data}
+        )
 
 
 def datalogger_create(log, comms_executor, cmds):

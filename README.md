@@ -1,10 +1,11 @@
 # GODENERG
 
-Atersa / Axpert Inverter python library / interface / tool
+Atersa / Axpert / Master Power / Voltronics Inverter python library / interface / tool
 
-The idea is to do a tool that works better that the WatchPower horsepoo that
-comes with the inverter and is usable through the network. The Watchpower
-is a badly coded piece of Java that just works as a GUI tool and has no
+The idea is to do a tool that works better that the dubious WatchPower program that
+comes with the inverter improves in practicality by been usable through the network. 
+
+The Watchpower is a badly coded piece of Java that just works as a GUI tool and has no
 network functionality when used with USB or Serial connections.
 
 Godenerg should be instalable in a Raspberry Pi and could be left connected
