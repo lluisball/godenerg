@@ -23,6 +23,7 @@ from axpert.settings import http_conf, logger_conf, datalogger_conf
 from axpert.connector import resolve_connector                  # noqa
 from axpert.cmd_parser import parse_args                        # noqa
 from axpert.http_handler import http_server_create              # noqa
+from axpert.charger import manual_charger
 from axpert.protocol import (
     CMD_REL, execute, Status, Response, CmdSpec
 )                                                               # noqa
@@ -31,10 +32,11 @@ from axpert.datalogger import (
     get_last_data_datetime, datalogger_http_server_create
 )                                                               # noqa
 
+
 FLOAT_VOL = 52.8
 CHARGE_VOL = 58.4
 
-MAX_RETRIES_FAILS = 1 
+MAX_RETRIES_FAILS = 1
 
 WATCHDOG_URL = 'http://localhost:{}/cmds?cmd=operation_mode'.format(
     http_conf['port']
@@ -80,14 +82,14 @@ def start_http_server(comms_executor):
     return process
 
 
-def start_process_executer(comms_executor):
-    log.info('Starting process executer')
+def start_charger(comms_executor):
+    log.info('Starting charger')
     process = Process(
-        target=tasks_processor,
+        target=manual_charger,
         args=[log, comms_executor]
     )
     process.start()
-    log.info('Started process executer')
+    log.info('Started charger')
     return process
 
 
@@ -250,14 +252,13 @@ def run_as_daemon(daemon, args, connector=None):
         )
         http_server_start = partial(start_http_server, comms_executor)
         datalogger_server_start = partial(start_datalogger, comms_executor)
-        task_processor_start = partial(start_process_executer, comms_executor)
-
         datalogger_http_server_start = partial(start_datalogger_http)
+        charger_start = partial(start_charger, comms_executor)
 
         http_server = http_server_start()
         datalogger_server = datalogger_server_start()
         datalogger_http_server = datalogger_http_server_start()
-        task_processor = task_processor_start()
+        charger = charger_start()
 
         start_watchdog(
             http_server_fail_event, datalogger_server_fail_event
@@ -280,7 +281,7 @@ def run_as_daemon(daemon, args, connector=None):
         kill_process(http_server, 'HTTP Server')
         kill_process(datalogger_server, 'Datalogger Server')
         kill_process(datalogger_http_server, 'Datalogger HTTP Server')
-        kill_process(task_processor, 'Task Processor')
+        kill_process(charger, 'Charger')
         log.error('Restart all Locks, Events and Processes')
 
     except Exception as e:

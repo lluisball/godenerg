@@ -24,13 +24,20 @@ class Status(IntEnum):
     NN = 3
 
 
+def empty_inverter_conf():
+    return InverterConf(bulk_volt=None, float_volt=None)
+
+
 def parse_inverter_conf(data):
     BULK_VOL_COL, FLOAT_VOL_COL = 10, 11
-    tokens = data.split(' ')
-    return InverterConf(
-        bulk_volt=float(tokens[BULK_VOL_COL]), 
-        float_volt=float(tokens[FLOAT_VOL_COL])
-    )
+    try:
+        tokens = data.split(' ')
+        return InverterConf(
+            bulk_volt=float(tokens[BULK_VOL_COL]),
+            float_volt=float(tokens[FLOAT_VOL_COL])
+        )
+    except:
+        return empty_inverter_conf()
 
 
 def execute(log, connector, cmd):
@@ -160,7 +167,7 @@ CMD_REL = {
         json=status_json_formatter
     ),
     'settings': CmdSpec(
-        code='QPIRI', size=90, val='',
+        code='QPIRI', size=110, val='',
         json=None
     ),
     'default_settings': CmdSpec(

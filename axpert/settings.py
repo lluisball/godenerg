@@ -17,10 +17,9 @@ datalogger_conf = {
 }
 
 charger_conf = {
-    'max_charge_amps': 60,
-    'float_volt': 52.8,
-    'absorbtion_volt': 58.4,
-
-    'absoption_amps_threshold': 7,
-    'max_absorption_time': 60 * 4,
+    'float_voltage': 52.8,
+    'absorbtion_voltage': 58.4,
+    'absorbtion_amps_threshold': 6.8,
+    'charge_check_start': 11,
+    'charge_check_end': 16
 }
