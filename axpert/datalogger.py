@@ -1,7 +1,7 @@
 from http.server import HTTPServer
 from sqlite3 import connect
 from time import sleep
-from datetime import datetime
+from datetime import datetime, timedelta
 from json import dumps as json_dumps
 from math import ceil
 from pygal import Line
@@ -34,9 +34,9 @@ DB = {'stats': [
     ],
 
     'last_stats': [
-        ('datetime', 'INTEGER'), 
+        ('datetime', 'INTEGER'),
         ('batt_volt', 'REAL'),
-        ('batt_charge_amps', 'INTEGER'), 
+        ('batt_charge_amps', 'INTEGER'),
         ('pv_amps', 'INTEGER'), ('pv_watts', 'INTEGER')
     ]
 }
@@ -46,7 +46,7 @@ INDEXES = {
         'batt_volt', 'batt_charge_amps', 'pv_amps', 'pv_watts', 'ac_watt'
     ],
     'last_stats': [
-        'batt_volt', 'batt_charge_amps', 'pv_amps', 'pv_watts'     
+        'batt_volt', 'batt_charge_amps', 'pv_amps', 'pv_watts'
     ]
 }
 
@@ -110,11 +110,11 @@ def save_datapoint(log, db_conn, tab_name, data):
 
 def delete_first_datapoint(db_conn):
     cursor = db_conn.cursor()
-    count, = cursor.execute('SELECT COUNT(1) FROM last_stats').fetchone()  
-    
+    count, = cursor.execute('SELECT COUNT(1) FROM last_stats').fetchone()
+
     if count < SAMPLES:
-        return 
-    
+        return
+
     first_dt, = cursor.execute(
         'SELECT datetime FROM last_stats ORDER BY datetime ASC LIMIT 1'
     ).fetchone()
@@ -124,9 +124,9 @@ def delete_first_datapoint(db_conn):
 
 
 def datalogger_interval_record(log, db_conn, status_data, mode_data, last):
-    now = int(datetime.now().timestamp()) 
+    now = int(datetime.now().timestamp())
     if (last + INTERVAL) > now:
-        return last 
+        return last
 
     if status_data and mode_data:
         save_datapoint(
@@ -155,7 +155,7 @@ def datalogger_create(log, comms_executor, cmds):
         with connect(datalogger_conf['db_filename']) as db_conn:
             ensure_db_structure(log, db_conn)
 
-            last = 0 
+            last = 0
             while True:
                 status_data = _execute_cmd(status_cmd)
                 mode_data = _execute_cmd(mode_cmd)
@@ -192,6 +192,24 @@ def get_last_data_datetime(log):
                 return 0
         else:
             return 0
+
+
+def get_avg_last(log, minutes=30):
+    with connect(datalogger_conf['db_filename']) as db_conn:
+        cursor = db_conn.cursor()
+        from_dt = datetime.now() - timedelta(minutes=minutes)
+        cursor.execute(
+            '''SELECT AVG(batt_volt), AVG(batt_charge_amps)
+               FROM last_stats WHERE datetime >= {}
+            '''.format(int(from_dt.timestamp()))
+        )
+        row = cursor.fetchone()
+        if row:
+            try:
+                return float(row[0]), float(row[1])
+            except Exception as e:
+                log.exception(e)
+        return (0,0)
 
 
 def get_range(from_dt, to_dt, extract_cols=None,

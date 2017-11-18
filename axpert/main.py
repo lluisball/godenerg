@@ -23,6 +23,7 @@ from axpert.settings import http_conf, logger_conf, datalogger_conf
 from axpert.connector import resolve_connector                  # noqa
 from axpert.cmd_parser import parse_args                        # noqa
 from axpert.http_handler import http_server_create              # noqa
+from axpert.charger import manual_charger
 from axpert.protocol import (
     CMD_REL, execute, Status, Response, CmdSpec
 )                                                               # noqa
@@ -31,10 +32,11 @@ from axpert.datalogger import (
     get_last_data_datetime, datalogger_http_server_create
 )                                                               # noqa
 
+
 FLOAT_VOL = 52.8
 CHARGE_VOL = 58.4
 
-MAX_RETRIES_FAILS = 1 
+MAX_RETRIES_FAILS = 1
 
 WATCHDOG_URL = 'http://localhost:{}/cmds?cmd=operation_mode'.format(
     http_conf['port']
@@ -80,14 +82,14 @@ def start_http_server(comms_executor):
     return process
 
 
-def start_process_executer(comms_executor):
-    log.info('Starting process executer')
+def start_charger(comms_executor):
+    log.info('Starting charger')
     process = Process(
-        target=tasks_processor,
+        target=manual_charger,
         args=[log, comms_executor]
     )
     process.start()
-    log.info('Started process executer')
+    log.info('Started charger')
     return process
 
 
@@ -223,50 +225,6 @@ def check_process(process, process_start, fail_event,
     return process, fail_count
 
 
-def tasks_processor(log, executor):
-    
-    def _get_float_volt():
-        try:
-            response = executor(CMD_REL.get('settings'))
-            return float(response.data.split(' ')[11])
-        except:
-            return None
-
-    while True:
-        try:
-            now=datetime.now()
-            if now.hour in [11, 12, 13, 14] and now.minute in [1, 10, 20, 30, 40, 50] and now.second in [1, 30]:
-                float_v = _get_float_volt()
-                if float_v and float_v > FLOAT_VOL:
-                    cmd = CMD_REL.get('status')
-                    response = executor(cmd)
-                    data = cmd.json(response.data, serialize=False) 
-                    available_amps = int(data['ac_watt']) < 300 
-                    if 58.2 < float(data['batt_volt']) < 58.6 and int(data['batt_charge_amps']) <= 7 and available_amps: 
-                        log.info('Detected batts ok and amps ok!')
-                        log.info('Changing float charge setting to %.1f' % FLOAT_VOL)
-                        executor(CmdSpec(code='PBFT', size=11, val='%.1f'% FLOAT_VOL, json=None))
-
-            if now.hour == 15 and now.minute in [1, 5] \
-                    and now.second in [1, 10, 20, 30, 40, 50]:
-                float_v = _get_float_volt()
-                if float_v and float_v > FLOAT_VOL:
-                    log.info('Changing float charge setting to %.1f' % FLOAT_VOL)
-                    executor(CmdSpec(code='PBFT', size=11, val='%.1f'% FLOAT_VOL, json=None))
-
-            if now.hour == 20 and now.minute in [15, 16] \
-                    and now.second in [1, 10, 20, 30, 40, 50]:
-                float_v = _get_float_volt()
-                if float_v and float_v < CHARGE_VOL:
-                    log.info('Changing float charge setting to %.1f' % CHARGE_VOL)
-                    executor(CmdSpec(code='PBFT', size=11, val='%.1f'% CHARGE_VOL, json=None))
-
-        except Exception as e:
-            log.exception(e)
-
-        sleep(1)    
-
-
 def comms(fnx):
     def _inner(*args, **kwargs):
         try:
@@ -274,8 +232,9 @@ def comms(fnx):
             devices = args[1]['devices']
             with connector_cls(devices=args[1]['devices'], log=log) as connector:
                 kwargs['connector'] = connector
-                return fnx(*args, **kwargs)
+                fnx(*args, **kwargs)
         except Exception as e:
+            log.error("Connection to inverter failed")
             log.exception(e)
     return _inner
 
@@ -290,15 +249,16 @@ def run_as_daemon(daemon, args, connector=None):
         comms_executor = partial(
             atomic_execute, comms_lock, connector
         )
+
         http_server_start = partial(start_http_server, comms_executor)
         datalogger_server_start = partial(start_datalogger, comms_executor)
-        task_processor_start = partial(start_process_executer, comms_executor)
         datalogger_http_server_start = partial(start_datalogger_http)
+        charger_start = partial(start_charger, comms_executor)
 
         http_server = http_server_start()
         datalogger_server = datalogger_server_start()
         datalogger_http_server = datalogger_http_server_start()
-        task_processor = task_processor_start()
+        charger = charger_start()
 
         start_watchdog(
             http_server_fail_event, datalogger_server_fail_event
@@ -321,7 +281,7 @@ def run_as_daemon(daemon, args, connector=None):
         kill_process(http_server, 'HTTP Server')
         kill_process(datalogger_server, 'Datalogger Server')
         kill_process(datalogger_http_server, 'Datalogger HTTP Server')
-        kill_process(task_processor, 'Task Processor')
+        kill_process(charger, 'Charger')
         log.error('Restart all Locks, Events and Processes')
 
     except Exception as e:

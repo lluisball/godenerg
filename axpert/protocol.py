@@ -10,6 +10,7 @@ from enum import IntEnum
 
 CmdSpec = namedtuple('CmdSpec', ['code', 'size', 'val', 'json'])
 Response = namedtuple('Response', ['status', 'data'])
+InverterConf = namedtuple('Inverter', ['bulk_volt', 'float_volt'])
 
 SOLAR_CHARGING = 'solar_charging'
 AC_CHARGING = 'ac_charging'
@@ -21,6 +22,22 @@ class Status(IntEnum):
     OK = 1
     KO = 2
     NN = 3
+
+
+def empty_inverter_conf():
+    return InverterConf(bulk_volt=None, float_volt=None)
+
+
+def parse_inverter_conf(data):
+    BULK_VOL_COL, FLOAT_VOL_COL = 10, 11
+    try:
+        tokens = data.split(' ')
+        return InverterConf(
+            bulk_volt=float(tokens[BULK_VOL_COL]),
+            float_volt=float(tokens[FLOAT_VOL_COL])
+        )
+    except:
+        return empty_inverter_conf()
 
 
 def execute(log, connector, cmd):
