@@ -14,15 +14,15 @@ I am using Godenerg provide the real-time data I need to display
 through HTTP into a Raspberry Pi in my living room that uses a OLED to display
 real-time stats.
 
-Currenct features:
+Current features:
 
-    - Solid daemon that can be left unsupervised working continuosly.
+    - Solid daemon that can be left unsupervised working continuously.
 
     - Datalogging working.
 
     - Stats plotting over HTTP working.
 
-    - Realtime data over HTTP working.
+    - Real-time data over HTTP working.
 
     - Charger process implemented and working better than the inverter's original charger.
 
@@ -43,21 +43,21 @@ to by-pass the big elephant in the room with this inverter, the charger:
     if you want to minimize the issue and if you happen to have quite a bit
     of PV power like I have (3.8KW), you are not using the available energy.
 
- 3. Cloudy days, unstead of charging with whatever energy there is (no worries
+ 3. Cloudy days, instead of charging with whatever energy there is (no worries
     for overcharging there), the inverter sits there at float voltage.
 
  4. They are some patched firmwares that try to address this problems, but
     the are patched firmwares by individuals and no source code is released.
-    I could give them a try but I fear briking the inverter since my only
+    I could give them a try but I fear bricking the inverter since my only
     means of energy is the PV array.
 
  5. Latest releases of the official firmware just wait 10 minutes
     before dropping to float voltage instead of under a minute.
-    I guess they tried bodging a fix but is still not correct.
+    I guess they tried boging a fix but is still not correct.
 
 To implement a charger from Godenerg:
 
- - I can dinamicaly set the float voltage setting.
+ - I can dynamically set the float voltage setting.
 
  - I can monitor the charge amperage and the battery voltage.
 
@@ -65,11 +65,11 @@ To implement a charger from Godenerg:
 
 Therefore:
 
- 1. I can wait for the desired absorbtion voltage to be reached (bulk phase),
-    forcing float voltage to be equals to absorbtion voltage.
+ 1. I can wait for the desired absorption voltage to be reached (bulk phase),
+    forcing float voltage to be equals to absorption voltage.
 
  2. Then I can monitor the average voltage and charge current through time
-    as the absorbtion phase is happening.
+    as the absorption phase is happening.
 
  3. When the amperage is low enough I can change the float voltage to the
     real float voltage.
@@ -78,15 +78,16 @@ With this mechanics I mimic the desired charging curve of volts vs amps
 described in all the charging documentation I find for sealed lead acid batteries.
 
  ![charge curve example](docs/charging_volts_vs_amps.png)
-
+ (graph generated with godenerg:
+ `http://host:8890/graph?from=2017111807&to=2017111819&col_2=batt_charge_amps&col_1=batt_volt`)
 
  * Current status:
 
     - The USB interface with the inverter is fairly unstable; the firmware
-      sometimes fails to properly respond and other times has small hipcups
+      sometimes fails to properly respond and other times has small hipccups
       so anything connected continuously to the inverter has to be able to
       handle failure.
-      The daemon takes care of watching over himself and restarts gracefuly
+      The daemon takes care of watching over himself and restarts gracefully
       if any issues happen. The daemon can be left unsupervised and will
       self fix and restart if any problems happen.
 
@@ -110,13 +111,13 @@ described in all the charging documentation I find for sealed lead acid batterie
 
  - Absorb voltage is set to max 58.4V
 
- - Float voltage is set to 52.8 which is what is recomended on the batteries datasheet.
+ - Float voltage is set to 52.8 which is what is recommended on the batteries data-sheet.
 
  - I have 12 x 320W PV panels wired in 4 paralel strings of 3 panels in series.
 
  - 8 x 6 550 Amps / h sealed maintenance free lead acid batteries.
 
- - Connecting from debian linux to the inverter using the hidusb inteface.
+ - Connecting from debian linux to the inverter using the hidusb interface.
 
  - Uncompressed the Watchpower JAR and decompiled the source to learn how to
    talk to the inverted along side info found on a couple of forums.
@@ -201,7 +202,7 @@ described in all the charging documentation I find for sealed lead acid batterie
         * `pv_watts`
 
 
-* HTTP Server for JSON realtime data usage. Since the nature of the
+* HTTP Server for JSON real-time data usage. Since the nature of the
   USB / serial communications is limited to a single client. Calls
   block until the serial / USB is free. So far just status (QPIGS)
   and (QMOD) commands are implemented. Adding other query commands
@@ -219,7 +220,7 @@ described in all the charging documentation I find for sealed lead acid batterie
     http://machine_ip:8889/cmds?cmd=operation_mode
     ```
 
-    - Both comibined as JSON (indexed in 2 different keys)
+    - Both combined as JSON (indexed in 2 different keys)
 
     ```
     http://machine_ip:8889/cmds?cmd=operation_mode&cmd=status
