@@ -78,7 +78,8 @@ With this mechanics I mimic the desired charging curve of volts vs amps
 described in all the charging documentation I find for sealed lead acid batteries.
 
  ![charge curve example](docs/charging_volts_vs_amps.png)
-
+ (graph generated with gonederg:
+ `http://host:8890/graph?from=2017111807&to=2017111819&col_2=batt_charge_amps&col_1=batt_volt`)
 
  * Current status:
 
