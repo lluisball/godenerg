@@ -5,28 +5,91 @@ Atersa / Axpert / Master Power / Voltronics Inverter python library / interface 
 The idea is to do a tool that works better that the dubious WatchPower program that
 comes with the inverter improves in practicality by been usable through the network. 
 
-The Watchpower is a badly coded piece of Java that just works as a GUI tool and has no
+The Watchpower is a badly coded piece of Java that works as a GUI tool and has no
 network functionality when used with USB or Serial connections.
 
 Godenerg should be instalable in a Raspberry Pi and could be left connected
-to a house LAN acting as a bridge to the inverter. Right now I am using 
-Godenerg to display the inverter data through HTTP into a Raspberry Pi in 
-my living room that uses a OLED to show realtime stats.
+to a house LAN acting as a bridge to the inverter. For instance, right now 
+I am using Godenerg provide the real-time data I need to display 
+through HTTP into a Raspberry Pi in my living room that uses a OLED to display
+real-time stats.
 
+Also this software is intented to by-pass the big elephant in the room with
+this inverter, the charger:
 
+ 1. The firmware in the inverter has a massive bug that the developers 
+    are not addressing. When the inverter is charging if the available 
+    amperage to charge drops below 1/5 of the max charging amperage set
+    it stops charging (in less than a minute).
+    If you happen to get a couple of clouds and have a rice cooker on,
+    for instance, you can forget about getting
+    a full charge. The inverter will stay in float voltage and the
+    day's charge will be over.
 
+ 2. Because of the mentioned bug you have to lower the max charging amperage
+    if you want to minimize the issue and if you happen to have quite a bit
+    of PV power like I have (3.8KW), you are not using the available energy.
+
+ 3. Cloudy days, unstead of charging with whatever energy there is (no worries
+    for overcharging there), the inverter sits there at float voltage. 
+
+ 4. They are some patched firmwares that try to address this problems, but
+    the are patched firmwares by individuals and no source code is released.
+    I could give them a try but I fear briking the inverter since my only
+    means of energy is the PV array. 
+
+ 5. Latest releases of the official firmware just wait 10 minutes 
+    before dropping to float voltage instead of under a minute. 
+    I guess they tried bodging a fix but is still not correct.
+
+To implement a charger from Godenerg:
+
+ - I can dinamicaly set the float voltage setting. 
+
+ - I can monitor the charge amperage and the battery voltage.
+
+ - I can gather stats and analyse the amperage and voltage overtime.
+
+Therefore:
+
+ 1. I can wait for the desired absorbtion voltage to be reached (bulk phase),
+    forcing float voltage to be equals to absorbtion voltage.
+
+ 2. Then I can monitor the average voltage and charge current through time 
+    as the absorbtion phase is happening.
+
+ 3. When the amperage is low enough I can change the float voltage to the
+    real float voltage.
+
+With this mechanics I mimic the desired charging curve of volts vs amps 
+described in all the charging documentation I find for sealed lead acid batteries.
+ 
+ 
  * Current status:
 
-    - The USB interface with the Axpert inverter is fairly unstable, 
-      the daemon takes care of watching over himself and restarts gracefuly if any issues happen. 
+    - The USB interface with the inverter is fairly unstable; the firmware
+      sometimes fails to properly respond and other times has small hipcups
+      so anything connected continuously to the inverter has to be able to
+      handle failure.
+      The daemon takes care of watching over himself and restarts gracefuly
+      if any issues happen. The daemon can be left unsupervised and will
+      self fix and restart if any problems happen. 
 
-    - Python 3 compatible. Just tested on Linux. No hope to get it tested on Mac or Windows
-      unless someone helps with that. 
+    - Python 3 compatible. Just tested on Linux. 
+      No hope to get it tested on Mac or Windows unless someone helps with that. 
 
     - So far tested on usb connections, whenever I get my hands on a usb to serial adapter
       I will test on serial connections. 
 
-    - Project in its infancy, alpha at best, just a couple weeks of coding.
+    - Project in its infancy, alpha at best but already usable.
+
+    - Charger process implemented and working better than the inverter's original charger.
+
+    - Datalogging working.
+
+    - Stats plotting over HTTP working.
+
+    - Realtime data over HTTP working.
 
     - Right now CMD tool is not up to date since I am putting all energies into
       the daemon.

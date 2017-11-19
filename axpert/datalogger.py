@@ -331,9 +331,9 @@ class BaseDataLoggerHandler(BaseGodenergHandler):
     def custom_style(col_2):
         return Style(
             foreground='#000000',
-            foreground_strong='#666666' if col_2 else '#333333',
+            foreground_strong='#AFAFAF' if col_2 else '#333333',
             foreground_subtle='#630C0D',
-            opacity='.2',
+            opacity='.3',
             opacity_hover='.5',
             transition='200ms ease-in',
             colors=('#3333FF', '#FF3333')
