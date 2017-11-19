@@ -45,7 +45,7 @@ def manual_charger(log, executor):
                 return
 
             avg_last_batt_volts, avg_last_batt_amps = get_avg_last(
-                log, minutes
+                log, minutes=30
             )
             if (ABSORB_VOL - 0.25) < avg_last_batt_volts < (ABSORB_VOL + 0.25)\
                     and avg_last_batt_amps < ABSORB_AMPS_THRESHOLD:
