@@ -99,13 +99,13 @@ described in all the charging documentation I find for sealed lead acid batterie
      arrived and I had a deficit of energy. I needed to monitor and imporve
      charging.
 
-   - The USB interface with the inverter is fairly unstable; the firmware
+   - The daemon takes care of watching over himself and restarts gracefully
+     if any issues happen. The daemon can be left unsupervised and will
+     self fix and restart if any problems happen. I had to to this because
+     the USB interface with the inverter is fairly unstable; the firmware
      sometimes fails to properly respond and other times has small hipccups
      so anything connected continuously to the inverter has to be able to
      handle failure.
-     The daemon takes care of watching over himself and restarts gracefully
-     if any issues happen. The daemon can be left unsupervised and will
-     self fix and restart if any problems happen.
 
    - Python 3 compatible. Just tested on Linux.
      No hope to get it tested on Mac or Windows unless someone helps with that.

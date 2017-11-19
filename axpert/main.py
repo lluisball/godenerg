@@ -246,6 +246,10 @@ def run_as_daemon(daemon, args, connector=None):
             atomic_execute, comms_lock, connector
         )
 
+        # The starters are passed later on to the process checker
+        # I curry the started calls to be able to have a generic
+        # process checker that know nothing about the start parameters
+        # (see check_process fnx)
         http_server_start = partial(start_http_server, comms_executor)
         datalogger_server_start = partial(start_datalogger, comms_executor)
         datalogger_http_server_start = partial(start_datalogger_http)
