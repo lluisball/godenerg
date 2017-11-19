@@ -43,13 +43,12 @@ Besides offering realtime data like WatchPower, this software is intented
 to by-pass the big elephant in the room with this inverter, the charger:
 
  1. The firmware in the inverter has a massive bug that the developers
-    are not addressing. When the inverter is charging if the available
-    amperage to charge drops below 1/5 of the max charging amperage set
-    it stops charging (in less than a minute).
+    are not addressing. When the inverter is charging, if the available
+    amperage to charge, drops below 1/5 of the max charging amperage set
+    in the settings, it stops cold the charge process (in less than a minute).
     If you happen to get a couple of clouds and have a rice cooker on,
-    for instance, you can forget about getting
-    a full charge. The inverter will stay in float voltage and the
-    day's charge will be over.
+    for instance, you can forget about getting a full charge.
+    The inverter will stay in float voltage and the day's charge will be over.
 
  2. Because of the mentioned bug you have to lower the max charging amperage
     if you want to minimize the issue and if you happen to have quite a bit
@@ -95,27 +94,32 @@ described in all the charging documentation I find for sealed lead acid batterie
 
 ## Current project status:
 
-    - The USB interface with the inverter is fairly unstable; the firmware
-      sometimes fails to properly respond and other times has small hipccups
-      so anything connected continuously to the inverter has to be able to
-      handle failure.
-      The daemon takes care of watching over himself and restarts gracefully
-      if any issues happen. The daemon can be left unsupervised and will
-      self fix and restart if any problems happen.
+   - I have created this project in a hurry and out of necessity,
+     because the charging was starting to become very poor now that autumn has
+     arrived and I had a deficit of energy. I needed to monitor and imporve
+     charging.
 
-    - Python 3 compatible. Just tested on Linux.
-      No hope to get it tested on Mac or Windows unless someone helps with that.
+   - The USB interface with the inverter is fairly unstable; the firmware
+     sometimes fails to properly respond and other times has small hipccups
+     so anything connected continuously to the inverter has to be able to
+     handle failure.
+     The daemon takes care of watching over himself and restarts gracefully
+     if any issues happen. The daemon can be left unsupervised and will
+     self fix and restart if any problems happen.
 
-    - So far tested on usb connections, whenever I get my hands on a usb to serial adapter
-      I will test on serial connections.
+   - Python 3 compatible. Just tested on Linux.
+     No hope to get it tested on Mac or Windows unless someone helps with that.
 
-    - Project in its infancy, alpha at best but already usable.
+   - So far tested on usb connections, whenever I get my hands on a usb to serial adapter
+     I will test on serial connections.
 
-    - Charging is crude, is based in time of the day and not dynamic. A lot to refine
-      in the charging process.
+   - Project in its infancy, alpha at best but already usable.
 
-    - Right now CMD tool is not up to date since I am putting all energies into
-      the daemon.
+   - Charging is crude, is based in time of the day and not dynamic. A lot could be refined
+     in the charging process.
+
+   - Right now command line tool is not up to date since I am putting all energies into
+     the daemon.
 
 ## Current inverter setup:
 
@@ -123,18 +127,22 @@ described in all the charging documentation I find for sealed lead acid batterie
 
  - Absorb voltage is set to max 58.4V
 
- - Float voltage is set to 52.8 which is what is recommended on the batteries data-sheet.
+ - Float voltage is set to 52.8V which is what is recommended on the batteries data-sheet.
 
- - I have 12 x 320W PV panels wired in 4 paralel strings of 3 panels in series.
+ - I have 12 x 320W PV panels wired in 4 paralel strings of 3 panels each in series.
 
- - 8 x 6 550 Amps / h sealed maintenance free lead acid batteries.
+ - 8 x 6 550 Amp/h sealed maintenance free lead acid batteries.
 
  - Connecting from debian linux to the inverter using the hidusb interface.
 
  - Uncompressed the Watchpower JAR and decompiled the source to learn how to
-   talk to the inverted along side info found on a couple of forums.
+   talk to the inverter, along side info found in a couple of forums.
 
 ## Testing:
+
+I will put more energies into testing during the next weeks. Since I needed this
+software in an urgent manner, I have not been the best testing for everything.
+
 ```
  $> pytest -v --pyargs axpert
 ```
