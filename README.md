@@ -14,18 +14,30 @@ I am using Godenerg provide the real-time data I need to display
 through HTTP into a Raspberry Pi in my living room that uses a OLED to display
 real-time stats.
 
-Current features:
+## Current features:
 
-    - Solid daemon that can be left unsupervised working continuously.
+    * Solid daemon that can be left unsupervised working continuously.
 
-    - Datalogging working.
+    * Datalogging working.
 
-    - Stats plotting over HTTP working.
+    * Stats plotting over HTTP working.
 
-    - Real-time data over HTTP working.
+    * Real-time data over HTTP working.
 
-    - Charger process implemented and working better than the inverter's original charger.
+    * Charger process implemented and working better than the inverter's original charger.
 
+## TODO:
+
+   * More sophisticated charging
+
+   * Web based, real-time visualization tool (like watchpower but web based)
+
+   * Web based settings setter trough forms (like watchpower but web based)
+
+   * Query interface for datalogger (besides the existing querystring interface).
+
+
+## Charging:
 
 Besides offering realtime data like WatchPower, this software is intented
 to by-pass the big elephant in the room with this inverter, the charger:
@@ -55,7 +67,7 @@ to by-pass the big elephant in the room with this inverter, the charger:
     before dropping to float voltage instead of under a minute.
     I guess they tried boging a fix but is still not correct.
 
-To implement a charger from Godenerg:
+### To implement a charger from Godenerg:
 
  - I can dynamically set the float voltage setting.
 
@@ -63,7 +75,7 @@ To implement a charger from Godenerg:
 
  - I can gather stats and analyse the amperage and voltage overtime.
 
-Therefore:
+### Therefore:
 
  1. I can wait for the desired absorption voltage to be reached (bulk phase),
     forcing float voltage to be equals to absorption voltage.
@@ -81,7 +93,7 @@ described in all the charging documentation I find for sealed lead acid batterie
  (graph generated with godenerg:
  `http://host:8890/graph?from=2017111807&to=2017111819&col_2=batt_charge_amps&col_1=batt_volt`)
 
- * Current status:
+## Current project status:
 
     - The USB interface with the inverter is fairly unstable; the firmware
       sometimes fails to properly respond and other times has small hipccups
