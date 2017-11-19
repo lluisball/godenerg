@@ -37,7 +37,7 @@ def manual_charger(log, executor):
     def _stop_charge_check(now):
         if now.hour in range(CHARGE_START_CHECK, CHARGE_END_CHECK + 1)  \
                 and now.minute in [1, 10, 20, 30, 40, 50]               \
-                and second in [1, 15, 30, 45]:
+                and now.second in [1, 15, 30, 45]:
 
             inverter_conf = get_inverter_conf()
             if not inverter_conf.float_volt \
@@ -54,7 +54,7 @@ def manual_charger(log, executor):
     def _start_charge_check(now):
         if now.hour in [3, 4]                                       \
                 and now.minute in [1, 3]                            \
-                and second in [1, 10, 20]:
+                and now.second in [1, 10, 20]:
             inverter_conf = get_inverter_conf()
             if inverter_conf.float_volt                             \
                     and inverter_conf.float_volt == FLOAT_VOL:
