@@ -2,23 +2,36 @@
 
 Atersa / Axpert / Master Power / Voltronics Inverter python library / interface / tool
 
-The idea is to do a tool that works better that the dubious WatchPower program that
-comes with the inverter improves in practicality by been usable through the network. 
+The idea is to develop a tool that works better that the dubious WatchPower program that
+comes with the inverter and improves in practicality by been usable through the network.
 
 The Watchpower is a badly coded piece of Java that works as a GUI tool and has no
 network functionality when used with USB or Serial connections.
 
-Godenerg should be instalable in a Raspberry Pi and could be left connected
-to a house LAN acting as a bridge to the inverter. For instance, right now 
-I am using Godenerg provide the real-time data I need to display 
+Godenerg should be usable in a Raspberry Pi and could be left connected
+to a house LAN acting as a bridge to the inverter. For instance, right now
+I am using Godenerg provide the real-time data I need to display
 through HTTP into a Raspberry Pi in my living room that uses a OLED to display
 real-time stats.
 
-Also this software is intented to by-pass the big elephant in the room with
-this inverter, the charger:
+Currenct features:
 
- 1. The firmware in the inverter has a massive bug that the developers 
-    are not addressing. When the inverter is charging if the available 
+    - Solid daemon that can be left unsupervised working continuosly.
+
+    - Datalogging working.
+
+    - Stats plotting over HTTP working.
+
+    - Realtime data over HTTP working.
+
+    - Charger process implemented and working better than the inverter's original charger.
+
+
+Besides offering realtime data like WatchPower, this software is intented
+to by-pass the big elephant in the room with this inverter, the charger:
+
+ 1. The firmware in the inverter has a massive bug that the developers
+    are not addressing. When the inverter is charging if the available
     amperage to charge drops below 1/5 of the max charging amperage set
     it stops charging (in less than a minute).
     If you happen to get a couple of clouds and have a rice cooker on,
@@ -31,20 +44,20 @@ this inverter, the charger:
     of PV power like I have (3.8KW), you are not using the available energy.
 
  3. Cloudy days, unstead of charging with whatever energy there is (no worries
-    for overcharging there), the inverter sits there at float voltage. 
+    for overcharging there), the inverter sits there at float voltage.
 
  4. They are some patched firmwares that try to address this problems, but
     the are patched firmwares by individuals and no source code is released.
     I could give them a try but I fear briking the inverter since my only
-    means of energy is the PV array. 
+    means of energy is the PV array.
 
- 5. Latest releases of the official firmware just wait 10 minutes 
-    before dropping to float voltage instead of under a minute. 
+ 5. Latest releases of the official firmware just wait 10 minutes
+    before dropping to float voltage instead of under a minute.
     I guess they tried bodging a fix but is still not correct.
 
 To implement a charger from Godenerg:
 
- - I can dinamicaly set the float voltage setting. 
+ - I can dinamicaly set the float voltage setting.
 
  - I can monitor the charge amperage and the battery voltage.
 
@@ -55,16 +68,18 @@ Therefore:
  1. I can wait for the desired absorbtion voltage to be reached (bulk phase),
     forcing float voltage to be equals to absorbtion voltage.
 
- 2. Then I can monitor the average voltage and charge current through time 
+ 2. Then I can monitor the average voltage and charge current through time
     as the absorbtion phase is happening.
 
  3. When the amperage is low enough I can change the float voltage to the
     real float voltage.
 
-With this mechanics I mimic the desired charging curve of volts vs amps 
+With this mechanics I mimic the desired charging curve of volts vs amps
 described in all the charging documentation I find for sealed lead acid batteries.
- 
- 
+
+ ![charge curve example](docs/charging_volts_vs_amps.png)
+
+
  * Current status:
 
     - The USB interface with the inverter is fairly unstable; the firmware
@@ -73,27 +88,38 @@ described in all the charging documentation I find for sealed lead acid batterie
       handle failure.
       The daemon takes care of watching over himself and restarts gracefuly
       if any issues happen. The daemon can be left unsupervised and will
-      self fix and restart if any problems happen. 
+      self fix and restart if any problems happen.
 
-    - Python 3 compatible. Just tested on Linux. 
-      No hope to get it tested on Mac or Windows unless someone helps with that. 
+    - Python 3 compatible. Just tested on Linux.
+      No hope to get it tested on Mac or Windows unless someone helps with that.
 
     - So far tested on usb connections, whenever I get my hands on a usb to serial adapter
-      I will test on serial connections. 
+      I will test on serial connections.
 
     - Project in its infancy, alpha at best but already usable.
 
-    - Charger process implemented and working better than the inverter's original charger.
-
-    - Datalogging working.
-
-    - Stats plotting over HTTP working.
-
-    - Realtime data over HTTP working.
+    - Charging is crude, is based in time of the day and not dynamic. A lot to refine
+      in the charging process.
 
     - Right now CMD tool is not up to date since I am putting all energies into
       the daemon.
 
+## Current inverter setup:
+
+ - Inverter is an 'Atersa 5KVA-48-PAR-A' model.
+
+ - Absorb voltage is set to max 58.4V
+
+ - Float voltage is set to 52.8 which is what is recomended on the batteries datasheet.
+
+ - I have 12 x 320W PV panels wired in 4 paralel strings of 3 panels in series.
+
+ - 8 x 6 550 Amps / h sealed maintenance free lead acid batteries.
+
+ - Connecting from debian linux to the inverter using the hidusb inteface.
+
+ - Uncompressed the Watchpower JAR and decompiled the source to learn how to
+   talk to the inverted along side info found on a couple of forums.
 
 ## Testing:
 ```
@@ -119,14 +145,7 @@ described in all the charging documentation I find for sealed lead acid batterie
     }
     ```
 
-    - *Next Steps for datalogger*  
-      From here, the next step will be to start logging the last 5 hours, just keeping 
-      the 5 previous hours logged by a small interval (like each 2 seconds).
-      With this data I can then develop processes to overwrite the 
-      dodgy charging algorithims that the inverted has and some other 
-      little problems, changing settings on the fly dinamicaly.
-
-* Datalogger HTTP server for graphing datacharts (for the moment).
+   * Datalogger HTTP server for graphing datacharts (for the moment).
   The server starts in the port specified under the 'port' key in 
   the `datalogger_conf` specified above.
 
@@ -151,14 +170,14 @@ described in all the charging documentation I find for sealed lead acid batterie
     - First desired column format: `col_1=bat_volt`
 
     - Second desired column format (optional): `col_2=pv_watts`
-    
+
     - Example 1, graphing `batt_volt` for third of November:
 
        `http://machine_ip:8890/graph?from=20171103&to=20171104&col_1=batt_volt`
         ![1 col example](docs/graphing_datalogger_1_col.png)
 
     - Example 2, graphing `batt_charge_amps` vs `pv_amps` for the third of November:
-    
+
         `http://machine_ip:8890/graph?from=20171103&to=20171104&col_1=batt_charge_amps&col_2=pv_amps`
         ![2 cols example](docs/graphing_datalogger_2_cols.png)
 
