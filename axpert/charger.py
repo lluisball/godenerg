@@ -1,3 +1,4 @@
+from time import sleep
 from datetime import datetime, timedelta
 
 from axpert.protocol import (
@@ -57,10 +58,15 @@ def manual_charger(log, executor):
             inverter_conf = get_inverter_conf()
             if inverter_conf.float_volt                             \
                     and inverter_conf.float_volt == FLOAT_VOL:
-                set_float_volts_to(log, executor, ABSORP)
+                set_float_volts_to(log, executor, ABSORB_VOL)
 
     while True:
         now = datetime.now()
-        _start_charge_check(now)
-        _stop_charge_check(now)
-        sleep(1)
+        try:
+            _start_charge_check(now)
+            _stop_charge_check(now)
+        except Exception as e:
+            log.error('Error in charger!')
+            log.error(e)
+        finally:
+            sleep(1)

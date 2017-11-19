@@ -23,7 +23,7 @@ from axpert.settings import http_conf, logger_conf, datalogger_conf
 from axpert.connector import resolve_connector                  # noqa
 from axpert.cmd_parser import parse_args                        # noqa
 from axpert.http_handler import http_server_create              # noqa
-from axpert.charger import manual_charger
+from axpert.charger import manual_charger                       # noqa
 from axpert.protocol import (
     CMD_REL, execute, Status, Response, CmdSpec
 )                                                               # noqa
@@ -31,10 +31,6 @@ from axpert.datalogger import (
     datalogger_create, get_range, DT_FORMAT,
     get_last_data_datetime, datalogger_http_server_create
 )                                                               # noqa
-
-
-FLOAT_VOL = 52.8
-CHARGE_VOL = 58.4
 
 MAX_RETRIES_FAILS = 1
 
