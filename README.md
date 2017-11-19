@@ -177,9 +177,10 @@ described in all the charging documentation I find for sealed lead acid batterie
        `http://machine_ip:8890/graph?from=20171103&to=20171104&col_1=batt_volt`
         ![1 col example](docs/graphing_datalogger_1_col.png)
 
-    - Example 2, graphing `batt_charge_amps` vs `pv_amps` for the third of November:
+    - Example 2, graphing `batt_volt` vs `pv_watts` for the fourth of November to the
+      eighteenth.
 
-        `http://machine_ip:8890/graph?from=20171103&to=20171104&col_1=batt_charge_amps&col_2=pv_amps`
+        `http://machine_ip:8890/graph?from=20171104&to=20171119&col_1=batt_volt&col_2=pv_watts`
         ![2 cols example](docs/graphing_datalogger_2_cols.png)
 
     - Available values are:
