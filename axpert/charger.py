@@ -2,7 +2,7 @@ from time import sleep
 from datetime import datetime, timedelta
 
 from axpert.protocol import (
-    CMD_REL, parse_inverter_conf, empty_inverter_conf
+    CMD_REL, parse_inverter_conf, empty_inverter_conf, CmdSpec
 )
 from axpert.settings import charger_conf
 from axpert.datalogger import get_avg_last
