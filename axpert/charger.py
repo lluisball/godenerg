@@ -39,7 +39,7 @@ def manual_charger(log, executor):
                 and now.minute in [1, 10, 20, 30, 40, 50]               \
                 and now.second in [1, 15, 30, 45]:
 
-            inverter_conf = get_inverter_conf()
+            inverter_conf = get_inverter_conf(executor)
             if not inverter_conf.float_volt \
                     or inverter_conf.float_volt == FLOAT_VOL:
                 return
@@ -55,7 +55,7 @@ def manual_charger(log, executor):
         if now.hour in [3, 4]                                       \
                 and now.minute in [1, 3]                            \
                 and now.second in [1, 10, 20]:
-            inverter_conf = get_inverter_conf()
+            inverter_conf = get_inverter_conf(executor)
             if inverter_conf.float_volt                             \
                     and inverter_conf.float_volt == FLOAT_VOL:
                 set_float_volts_to(log, executor, ABSORB_VOL)
