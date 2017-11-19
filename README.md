@@ -16,15 +16,15 @@ real-time stats.
 
 ## Current features:
 
-    * Solid daemon that can be left unsupervised working continuously.
+   * Solid daemon that can be left unsupervised working continuously.
 
-    * Datalogging working.
+   * Datalogging working.
 
-    * Stats plotting over HTTP working.
+   * Stats plotting over HTTP working.
 
-    * Real-time data over HTTP working.
+   * Real-time data over HTTP working.
 
-    * Charger process implemented and working better than the inverter's original charger.
+   * Charger process implemented and working better than the inverter's original charger.
 
 ## TODO:
 
