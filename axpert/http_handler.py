@@ -96,6 +96,8 @@ class BaseRemoteCommandsHandler(BaseGodenergHandler):
 
     routes = {
         '/cmds': 'get_cmds',
+        '/viewer': 'viewer',
+        '/jquery': 'jquery'
     }
 
     def execute_cmd(self, cmd_name):
@@ -103,6 +105,17 @@ class BaseRemoteCommandsHandler(BaseGodenergHandler):
             self.comms_executor(self.cmds[cmd_name]).data,
             serialize=False
         )
+
+    @html_response
+    def viewer(self, req):
+        self.serve_static('viewer.html')
+
+    def jquery(self, req):
+        self.serve_static('jquery-3.2.1.min.js')
+
+    def serve_static(self, fname):
+        with open('static/' + fname, 'r') as fr:
+            return fr.read()
 
     @json_response
     def get_cmds(self, req):

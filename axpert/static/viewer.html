@@ -1,0 +1,40 @@
+<html>
+
+    <body>
+        <table>
+            <tr>
+                <td>pv_watts</td><td><div id="pv_watts"> </div></td>
+                <td><div id="batt_volt"> </div></td>
+            </tr>
+
+            <tr>
+                <td><div id="batt_charge_amps"> </div></td>
+                <td><div id="ac_watts"> </div></td>
+            </tr>
+        </table>
+        <script src="/jquery" type="text/javascript">
+        </script>
+        <script type="text/javascript">
+
+            var refresh = function(data){
+                $("#pv_watts").append(data.pv_watts);
+            };
+
+            var refresh_event = function(){
+                $.getJSON(
+                    "/cmds?cmd=status&cmd=operation_mode&merge=1",
+                    refresh
+                );
+            };
+
+
+            $(document).ready(
+
+
+            );
+
+            window.setInterval(refresh_event, 2000);
+        </script>
+    </body>
+
+</html>
