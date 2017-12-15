@@ -21,5 +21,5 @@ charger_conf = {
     'absorbtion_voltage': 58.4,
     'absorbtion_amps_threshold': 6.8,
     'charge_check_start': 11,
-    'charge_check_end': 16
+    'charge_check_end': 23
 }

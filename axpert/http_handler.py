@@ -108,14 +108,15 @@ class BaseRemoteCommandsHandler(BaseGodenergHandler):
 
     @html_response
     def viewer(self, req):
-        self.serve_static('viewer.html')
+        return self.serve_static('viewer.html')
 
+    @html_response
     def jquery(self, req):
-        self.serve_static('jquery-3.2.1.min.js')
+        return self.serve_static('jquery-3.2.1.min.js')
 
     def serve_static(self, fname):
-        with open('static/' + fname, 'r') as fr:
-            return fr.read()
+        with open('/home/ups/godenerg/axpert/static/' + fname, 'r') as fr:
+            return fr.read().encode('utf-8')
 
     @json_response
     def get_cmds(self, req):

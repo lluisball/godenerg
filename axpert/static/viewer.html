@@ -1,23 +1,57 @@
-<html>
+<!DOCTYPE html PUBLIC"-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+    <head>
+        <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+        <meta content="utf-8" http-equiv="encoding">
+    </head>
 
     <body>
         <table>
             <tr>
-                <td>pv_watts</td><td><div id="pv_watts"> </div></td>
-                <td><div id="batt_volt"> </div></td>
+                <td>
+                    <label>PV Watts: </label>
+                    <div id="pv_watts"> </div>
+                </td>
+                <td>
+                    <label>Battery Volts: </label>
+                    <div id="batt_volt"> </div>
+                </td>
             </tr>
 
             <tr>
-                <td><div id="batt_charge_amps"> </div></td>
-                <td><div id="ac_watts"> </div></td>
+                <td>
+                    <label>Battery amps charge: </label>
+                    <div id="batt_charge_amps"> </div>
+                </td>
+                <td>
+                    <label>AC Watts: </label>
+                    <div id="ac_watt"> </div>
+                </td>
             </tr>
+            <tr>
+                <td>
+                    <label>Charge: </label>
+                    <div id="batt_capacity"> </div>
+                </td>
+                <td>
+                </td>
+            </tr>
+
         </table>
         <script src="/jquery" type="text/javascript">
         </script>
         <script type="text/javascript">
 
             var refresh = function(data){
-                $("#pv_watts").append(data.pv_watts);
+                var items = [
+                    "pv_watts", "batt_volt", "batt_charge_amps", "ac_watt",
+                    "batt_capacity"
+                ];
+                jQuery.each(items, function(i, item){
+                    $("#" + item).text(data[item]);
+                });
             };
 
             var refresh_event = function(){
@@ -33,7 +67,7 @@
 
             );
 
-            window.setInterval(refresh_event, 2000);
+            window.setInterval(refresh_event, 1000);
         </script>
     </body>
 
