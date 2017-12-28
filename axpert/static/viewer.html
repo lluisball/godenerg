@@ -74,6 +74,7 @@
             </tr>
 
         </table>
+        <input type="button" id="wake_lock" value="Enable wake lock" />
         <script src="/jquery" type="text/javascript">
         </script>
         <script src="/no_sleep" type="text/javascript">
@@ -160,9 +161,11 @@
 
             var enableNoSleep = function() {
                 noSleep.enable();
-                document.removeEventListener('mouseover', enableNoSleep, false);
+                $("#wake_lock").hide();
             };
-            document.addEventListener('mouseover', enableNoSleep, false);
+
+            var wakeLock= document.querySelector("#wake_lock");
+            wakeLock.addEventListener('click', enableNoSleep, false);
 
             window.setInterval(refresh_event, 1000);
         </script>
