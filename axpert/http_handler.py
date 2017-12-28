@@ -99,6 +99,7 @@ class BaseRemoteCommandsHandler(BaseGodenergHandler):
         '/cmds': 'get_cmds',
         '/viewer': 'viewer',
         '/jquery': 'jquery',
+        '/no_sleep': 'no_sleep',
         '/img': 'img'
     }
 
@@ -115,6 +116,10 @@ class BaseRemoteCommandsHandler(BaseGodenergHandler):
     @html_response()
     def jquery(self, req):
         return self.serve_static('jquery-3.2.1.min.js')
+
+    @html_response()
+    def no_sleep(self, req):
+        return self.serve_static('NoSleep.js')
 
     @html_response(ctype='image/gif')
     def img(self, req):

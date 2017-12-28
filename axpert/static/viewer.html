@@ -76,6 +76,8 @@
         </table>
         <script src="/jquery" type="text/javascript">
         </script>
+        <script src="/no_sleep" type="text/javascript">
+        </script>
         <script type="text/javascript">
             var refreshBatteryIcon = function(data) {
                 var charge = data["batt_capacity"];
@@ -154,12 +156,13 @@
                     refresh
                 );
             };
+            var noSleep = new NoSleep();
 
-
-            $(document).ready(
-
-
-            );
+            var enableNoSleep = function() {
+                noSleep.enable();
+                document.removeEventListener('mouseover', enableNoSleep, false);
+            };
+            document.addEventListener('mouseover', enableNoSleep, false);
 
             window.setInterval(refresh_event, 1000);
         </script>
