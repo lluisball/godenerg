@@ -369,7 +369,7 @@ class BaseDataLoggerHandler(BaseGodenergHandler):
         )
         return chart
 
-    @html_response
+    @html_response()
     def plot_datalogger(self, req):
         from_dt = req['from'][0]
         to_dt = req['to'][0]

@@ -25,23 +25,24 @@ class BaseGodenergHandler(BaseHTTPRequestHandler):
             route_fnx(parse_qs(parsed_path.query))
 
 
-def html_response(fnx):
-    def _inner(*args, **kwargs):
-        self = args[0]
-        try:
-            response = fnx(*args, **kwargs)
-            self.send_response(200)
+def html_response(ctype='text/html'):
+    def _wrap(fnx):
+        def _inner(*args, **kwargs):
+            self = args[0]
+            try:
+                response = fnx(*args, **kwargs)
+                self.send_response(200)
 
-        except Exception as e:
-            response = str(e)
-            self.send_response(500)
-            self.log.exception(e)
+            except Exception as e:
+                response = str(e)
+                self.send_response(500)
+                self.log.exception(e)
 
-        self.send_header('Content-type', 'text/html')
-        self.end_headers()
-        return self.wfile.write(response)
-
-    return _inner
+            self.send_header('Content-type', ctype)
+            self.end_headers()
+            return self.wfile.write(response)
+        return _inner
+    return _wrap
 
 
 def json_response(fnx):
@@ -97,7 +98,8 @@ class BaseRemoteCommandsHandler(BaseGodenergHandler):
     routes = {
         '/cmds': 'get_cmds',
         '/viewer': 'viewer',
-        '/jquery': 'jquery'
+        '/jquery': 'jquery',
+        '/img': 'img'
     }
 
     def execute_cmd(self, cmd_name):
@@ -106,16 +108,24 @@ class BaseRemoteCommandsHandler(BaseGodenergHandler):
             serialize=False
         )
 
-    @html_response
+    @html_response()
     def viewer(self, req):
         return self.serve_static('viewer.html')
 
-    @html_response
+    @html_response()
     def jquery(self, req):
         return self.serve_static('jquery-3.2.1.min.js')
 
-    def serve_static(self, fname):
-        with open('/home/ups/godenerg/axpert/static/' + fname, 'r') as fr:
+    @html_response(ctype='image/gif')
+    def img(self, req):
+        img_fname = req['src'][0]
+        return self.serve_static('img/' + img_fname, binary=True)
+
+    def serve_static(self, fname, binary=False):
+        mode = 'rb' if binary else 'r'
+        with open('/home/ups/godenerg/axpert/static/' + fname, mode) as fr:
+            if binary:
+                return fr.read()
             return fr.read().encode('utf-8')
 
     @json_response

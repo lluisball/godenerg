@@ -5,37 +5,71 @@
     <head>
         <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
         <meta content="utf-8" http-equiv="encoding">
+
+        <style>
+            #main {
+                border: 1px solid black;
+                border-radius: 25px;
+                width: 700px; height: 530px;
+                background: #000000;
+            }
+            .icon {
+                margin-left:50px;
+            }
+            .value {
+                color:#FFFFFF;
+                font-family: Verdana;
+                font-size: 22px;
+                font-weight: bold;
+            }
+            #pv_watts_lbl {
+                margin-left: 45px;
+            }
+            #batt_lbl {
+                margin-left: 45px;
+                margin-top: 50px;
+            }
+            #batt_cap_lbl{
+                margin-left: 85px;
+                margin-top: -85px;
+            }
+            #house_lbl {
+                margin-top: -10px;
+                margin-left: 70px;
+            }
+
+        </style>
+
     </head>
 
     <body>
-        <table>
+        <table id="main">
             <tr>
                 <td>
-                    <label>PV Watts: </label>
-                    <div id="pv_watts"> </div>
+                    <img id="solar" class="icon" src="/img?src=solar.gif"/>
+                    <div class="value" id="pv_watts_lbl">
+                        <span id="pv_watts"></span>W /
+                        <span id="pv_amps"></span>A
+                    </div>
                 </td>
                 <td>
-                    <label>Battery Volts: </label>
-                    <div id="batt_volt"> </div>
-                </td>
-            </tr>
+                    <img id="batt" class="icon" src="/img?src=batt-100.gif"/>
 
-            <tr>
-                <td>
-                    <label>Battery amps charge: </label>
-                    <div id="batt_charge_amps"> </div>
+                    <div class="value" id="batt_cap_lbl">
+                        <span id="batt_capacity"></span>%
+                    </div>
+
+                    <div class="value" id="batt_lbl">
+                        <span id="batt_charge_amps"></span> /
+                        <span id="batt_volt"></span>V
+                    </div>
                 </td>
+
                 <td>
-                    <label>AC Watts: </label>
-                    <div id="ac_watt"> </div>
-                </td>
-            </tr>
-            <tr>
-                <td>
-                    <label>Charge: </label>
-                    <div id="batt_capacity"> </div>
-                </td>
-                <td>
+                    <img id="house" class="icon" src="/img?src=house-100.gif"/>
+                    <div class="value" id="house_lbl">
+                        <span id="ac_watt"></span>W
+                    </div>
                 </td>
             </tr>
 
@@ -43,15 +77,75 @@
         <script src="/jquery" type="text/javascript">
         </script>
         <script type="text/javascript">
+            var refreshBatteryIcon = function(data) {
+                var charge = data["batt_capacity"];
+                if (charge > 75) {
+                    $("#batt").attr("src", "/img?src=batt-100.gif");
+                }
+                else if (charge <= 75 && charge > 65) {
+                    $("#batt").attr("src", "/img?src=batt-75.gif");
+                }
+                else if (charge <= 65 && charge > 55) {
+                    $("#batt").attr("src", "/img?src=batt-50.gif");
+                }
+                else if (charge <= 55) {
+                    $("#batt").attr("src", "/img?src=batt-25.gif");
+                }
+            };
+            var refreshHouseIcon = function(data) {
+                var load = data["load_percent"];
+                if (load < 8) {
+                    $("#house").attr("src", "/img?src=house-100.gif");
+                }
+                else if (load >= 8 && load < 25) {
+                    $("#house").attr("src", "/img?src=house-75.gif");
+                }
+                else if (load >= 25 && load < 45) {
+                    $("#house").attr("src", "/img?src=house-50.gif");
+                }
+                else if (load >= 45) {
+                    $("#house").attr("src", "/img?src=house-25.gif");
+                }
+            };
+            var refreshBatteryAmps = function(data) {
+                var batt_charge=data["batt_charge_amps"];
+                var batt_discharge=data["batt_discharge_amps"];
+                if (batt_discharge > 0){
+                    $("#batt_charge_amps").text("-" + batt_discharge + "A");
+                    $("#batt_charge_amps").css({"color":"#FF3333"});
+                }
+                else if (batt_charge == 0) {
+                    $("#batt_charge_amps").text("0"+ "A");
+                    $("#batt_charge_amps").css({"color":"#FFFFFF"});
+                }
+                else {
+                    $("#batt_charge_amps").text("+" + batt_charge + "A");
+                    $("#batt_charge_amps").css({"color":"#33FF33"});
+                }
+            };
+
+            var refreshSolarIcon = function(data) {
+                var pv_watts = data["pv_watts"];
+                if (pv_watts < 1) {
+                    $("#solar").attr("src", "/img?src=moon.gif");
+                }
+                else {
+                    $("#solar").attr("src", "/img?src=solar.gif");
+                }
+            };
 
             var refresh = function(data){
                 var items = [
-                    "pv_watts", "batt_volt", "batt_charge_amps", "ac_watt",
-                    "batt_capacity"
+                    "pv_watts", "pv_amps", "batt_volt",
+                    "ac_watt", "batt_capacity"
                 ];
                 jQuery.each(items, function(i, item){
                     $("#" + item).text(data[item]);
                 });
+                refreshBatteryAmps(data);
+                refreshBatteryIcon(data);
+                refreshHouseIcon(data);
+                refreshSolarIcon(data);
             };
 
             var refresh_event = function(){
