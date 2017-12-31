@@ -8,6 +8,7 @@ from datetime import datetime
 
 from axpert.settings import http_conf
 from axpert.protocol import CMD_REL
+from axpert.weather import get_weather_stats
 
 
 class BaseGodenergHandler(BaseHTTPRequestHandler):
@@ -100,7 +101,8 @@ class BaseRemoteCommandsHandler(BaseGodenergHandler):
         '/viewer': 'viewer',
         '/jquery': 'jquery',
         '/no_sleep': 'no_sleep',
-        '/img': 'img'
+        '/img': 'img',
+        '/weather': 'weather'
     }
 
     def execute_cmd(self, cmd_name):
@@ -132,6 +134,12 @@ class BaseRemoteCommandsHandler(BaseGodenergHandler):
             if binary:
                 return fr.read()
             return fr.read().encode('utf-8')
+
+
+    @json_response
+    def weather(self, req):
+        return get_weather_stats(self.log)
+
 
     @json_response
     def get_cmds(self, req):

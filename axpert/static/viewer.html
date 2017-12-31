@@ -9,51 +9,215 @@
         <style>
             #main {
                 border: 1px solid black;
-                border-radius: 25px;
-                width: 700px; height: 530px;
+                width: 520px; height: 300px;
                 background: #000000;
             }
             .icon {
-                margin-left:50px;
+                margin-top:-10px;
+                margin-left:15px;
             }
             .value {
                 color:#FFFFFF;
                 font-family: Verdana;
-                font-size: 22px;
+                font-size: 20px;
+                font-weight: bold;
+            }
+            .tvalue {
+                color:#FFFFFF;
+                font-family: Verdana;
+                font-size: 18px;
                 font-weight: bold;
             }
             #pv_watts_lbl {
-                margin-left: 45px;
+                margin-left: 25px;
             }
             #batt_lbl {
-                margin-left: 45px;
+                margin-left: 25px;
                 margin-top: 50px;
             }
             #batt_cap_lbl{
-                margin-left: 85px;
+                margin-left: 55px;
                 margin-top: -85px;
             }
             #house_lbl {
                 margin-top: -10px;
-                margin-left: 70px;
+                margin-left: 45px;
             }
-
+            #wake_lock {
+                margin-top: -5px;
+                margin-left: -5px;
+                height: 235px;
+                width: 180px;
+                font-size: 25px;
+                font-family: Verdana;
+                border: 1px solid black;
+                border-radius: 25px;
+                background: #FAE500;
+            }
+            #humd_container {
+                color:#D462FF;
+                margin-left:25px;
+            }
+            #temp_container {
+                color:#E238EC;
+                margin-left:10px;
+            }
+            #today_cloud_cover_container {
+                color:#C8A2C8;
+                margin-left:25px;
+            }
+            #weather_nums {
+                text-align: center;
+                margin-top:-10px;
+            }
+            .separator {
+                color:#FFFFFF;
+            }
+            #img_now{
+            }
+            .w_lbl{
+                font-size:14px;
+            }
+            .w_txt{
+                font-size:10px;
+            }
+            #today_container {
+                margin-top:-10px;
+                width: 120px;
+                height:100px;
+            }
+            .timgvalue {
+                color:#FFFFFF;
+                font-family: Verdana;
+                font-size: 18px;
+                font-weight: bold;
+            }
         </style>
 
     </head>
 
     <body>
+        <div id="fs-container" webkitallowfullscreen mozallowfullscreen allowfullscreen>
+        <input type="button" id="wake_lock" value="START" />
         <table id="main">
             <tr>
+                <td colspan="3">
+                    <div class="tvalue" id="weather_nums">
+                        <span id="temp_container">
+                            <span id="temp"></span>&deg;C
+                        </span>
+                        <span id="humd_container">
+                            Humidity: <span id="humd"></span>%
+                        </span>
+                        <span id="today_cloud_cover_container">
+                            Cloud cover: <span id="today_cloud_cover"></span>%
+                        </span>
+                    </div>
+                    <hr class="separator"/>
+                </td>
+            </tr>
+                <td colspan="3">
+                    <table>
+                        <tr>
+                            <td>
+                                <div class="timgvalue" id="weather_img">
+                                    <table id="today_container">
+                                        <tr>
+                                            <td style="text-align:center">
+                                                <span class="w_lbl">Now</span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align:center">
+                                                <img id="now_img" src="/img?src=weather_0.png"/>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align:center">
+                                                <span class="w_txt" id="now_txt"></span>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="timgvalue" id="weather_img">
+                                    <table id="today_container">
+                                        <tr>
+                                            <td style="text-align:center">
+                                                <span class="w_lbl" id="lbl_now">Later</span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align:center">
+                                                <img id="today_img" src="/img?src=weather_0.png"/>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align:center">
+                                                <span class="w_txt" id="today_txt"></span>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="timgvalue" id="weather_img">
+                                    <table id="today_container">
+                                        <tr>
+                                            <td style="text-align:center">
+                                                <span class="w_lbl" id="day_1_label"></span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align:center">
+                                                <img id="day_1_img" src="/img?src=weather_0.png"/>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align:center">
+                                                <span class="w_txt" id="day_1_txt"></span>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="timgvalue" id="weather_img">
+                                    <table id="today_container">
+                                        <tr>
+                                            <td style="text-align:center">
+                                                <span class="w_lbl" id="day_2_label"></span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align:center">
+                                                <img id="day_2_img" src="/img?src=weather_0.png"/>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align:center">
+                                                <span class="w_txt" id="day_2_txt"></span>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                    <hr class="separator"/>
+                </td>
+            </tr>
+            <tr>
                 <td>
-                    <img id="solar" class="icon" src="/img?src=solar.gif"/>
+                    <img id="solar" class="icon" src="/img?src=solar.png"/>
                     <div class="value" id="pv_watts_lbl">
                         <span id="pv_watts"></span>W /
                         <span id="pv_amps"></span>A
                     </div>
                 </td>
                 <td>
-                    <img id="batt" class="icon" src="/img?src=batt-100.gif"/>
+                    <img id="batt" class="icon" src="/img?src=batt-100.png"/>
 
                     <div class="value" id="batt_cap_lbl">
                         <span id="batt_capacity"></span>%
@@ -66,7 +230,7 @@
                 </td>
 
                 <td>
-                    <img id="house" class="icon" src="/img?src=house-100.gif"/>
+                    <img id="house" class="icon" src="/img?src=house-100.png"/>
                     <div class="value" id="house_lbl">
                         <span id="ac_watt"></span>W
                     </div>
@@ -74,7 +238,6 @@
             </tr>
 
         </table>
-        <input type="button" id="wake_lock" value="Enable wake lock" />
         <script src="/jquery" type="text/javascript">
         </script>
         <script src="/no_sleep" type="text/javascript">
@@ -83,31 +246,31 @@
             var refreshBatteryIcon = function(data) {
                 var charge = data["batt_capacity"];
                 if (charge > 75) {
-                    $("#batt").attr("src", "/img?src=batt-100.gif");
+                    $("#batt").attr("src", "/img?src=batt-100.png");
                 }
                 else if (charge <= 75 && charge > 65) {
-                    $("#batt").attr("src", "/img?src=batt-75.gif");
+                    $("#batt").attr("src", "/img?src=batt-75.png");
                 }
                 else if (charge <= 65 && charge > 55) {
-                    $("#batt").attr("src", "/img?src=batt-50.gif");
+                    $("#batt").attr("src", "/img?src=batt-50.png");
                 }
                 else if (charge <= 55) {
-                    $("#batt").attr("src", "/img?src=batt-25.gif");
+                    $("#batt").attr("src", "/img?src=batt-25.png");
                 }
             };
             var refreshHouseIcon = function(data) {
                 var load = data["load_percent"];
                 if (load < 8) {
-                    $("#house").attr("src", "/img?src=house-100.gif");
+                    $("#house").attr("src", "/img?src=house-100.png");
                 }
                 else if (load >= 8 && load < 25) {
-                    $("#house").attr("src", "/img?src=house-75.gif");
+                    $("#house").attr("src", "/img?src=house-75.png");
                 }
                 else if (load >= 25 && load < 45) {
-                    $("#house").attr("src", "/img?src=house-50.gif");
+                    $("#house").attr("src", "/img?src=house-50.png");
                 }
                 else if (load >= 45) {
-                    $("#house").attr("src", "/img?src=house-25.gif");
+                    $("#house").attr("src", "/img?src=house-25.png");
                 }
             };
             var refreshBatteryAmps = function(data) {
@@ -130,14 +293,14 @@
             var refreshSolarIcon = function(data) {
                 var pv_watts = data["pv_watts"];
                 if (pv_watts < 1) {
-                    $("#solar").attr("src", "/img?src=moon.gif");
+                    $("#solar").attr("src", "/img?src=moon.png");
                 }
                 else {
-                    $("#solar").attr("src", "/img?src=solar.gif");
+                    $("#solar").attr("src", "/img?src=solar.png");
                 }
             };
 
-            var refresh = function(data){
+            var refreshUpsData = function(data){
                 var items = [
                     "pv_watts", "pv_amps", "batt_volt",
                     "ac_watt", "batt_capacity"
@@ -151,23 +314,71 @@
                 refreshSolarIcon(data);
             };
 
-            var refresh_event = function(){
+            var refreshUpsDataEvent = function(){
                 $.getJSON(
                     "/cmds?cmd=status&cmd=operation_mode&merge=1",
-                    refresh
+                    refreshUpsData
                 );
+                window.setTimeout(refreshUpsDataEvent, 1000);
             };
+
+            var refreshWeather = function(data) {
+                var items = [
+                    "temp", "humd", "today_cloud_cover",
+                    "now_txt", "day_1_txt", "day_2_txt",
+                    "today_txt", "day_1_label", "day_2_label"
+                ];
+                jQuery.each(items, function(i, item){
+                    $("#" + item).text(data[item]);
+                });
+                $("#now_img").attr("src", "/img?src=weather_" + data["now_code"] + ".png");
+                $("#today_img").attr("src", "/img?src=weather_" + data["today_code"] + ".png");
+                $("#day_1_img").attr("src", "/img?src=weather_" + data["day_1_code"] + ".png");
+                $("#day_2_img").attr("src", "/img?src=weather_" + data["day_2_code"] + ".png");
+            };
+
+            var refreshWeatherEvent = function(){
+                $.getJSON(
+                    "/weather", refreshWeather
+                );
+                window.setTimeout(refreshWeatherEvent, 1000 * 60 * 60);
+            };
+
+            var refreshPage = function() {
+                location.reload(true);
+            };
+
             var noSleep = new NoSleep();
 
             var enableNoSleep = function() {
                 noSleep.enable();
                 $("#wake_lock").hide();
+                var elem = document.getElementById("fs-container")
+                if (elem.webkitRequestFullscreen) {
+                    elem.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
+                }
+                else {
+                    if (elem.mozRequestFullScreen) {
+                        elem.mozRequestFullScreen();
+                    }
+                    else {
+                      elem.requestFullscreen();
+                    }
+               }
             };
 
             var wakeLock= document.querySelector("#wake_lock");
             wakeLock.addEventListener('click', enableNoSleep, false);
+            $("#fs-container").click(function(){
+                document.cancelFullScreen();
+                $("#wake_lock").show();
+            });
 
-            window.setInterval(refresh_event, 1000);
+            refreshUpsDataEvent();
+            refreshWeatherEvent();
+            window.setInterval(refreshPage, 1000 * 60 * 60 * 12);
+
+
         </script>
     </body>
 
