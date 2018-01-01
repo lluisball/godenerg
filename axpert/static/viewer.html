@@ -301,25 +301,33 @@
             };
 
             var refreshUpsData = function(data){
-                var items = [
-                    "pv_watts", "pv_amps", "batt_volt",
-                    "ac_watt", "batt_capacity"
-                ];
-                jQuery.each(items, function(i, item){
-                    $("#" + item).text(data[item]);
-                });
-                refreshBatteryAmps(data);
-                refreshBatteryIcon(data);
-                refreshHouseIcon(data);
-                refreshSolarIcon(data);
+                try {
+                    var items = [
+                        "pv_watts", "pv_amps", "batt_volt",
+                        "ac_watt", "batt_capacity"
+                    ];
+                    jQuery.each(items, function(i, item){
+                        $("#" + item).text(data[item]);
+                    });
+                    refreshBatteryAmps(data);
+                    refreshBatteryIcon(data);
+                    refreshHouseIcon(data);
+                    refreshSolarIcon(data);
+                }
+                catch(e){}
             };
 
             var refreshUpsDataEvent = function(){
-                $.getJSON(
-                    "/cmds?cmd=status&cmd=operation_mode&merge=1",
-                    refreshUpsData
-                );
-                window.setTimeout(refreshUpsDataEvent, 1000);
+                try{
+                    $.getJSON(
+                        "/cmds?cmd=status&cmd=operation_mode&merge=1",
+                        refreshUpsData
+                    );
+                    window.setTimeout(refreshUpsDataEvent, 1000);
+                }
+                catch(e){
+                    window.setTimeout(refreshUpsDataEvent, 5000);
+                }
             };
 
             var refreshWeather = function(data) {
@@ -338,21 +346,29 @@
             };
 
             var refreshWeatherEvent = function(){
-                $.getJSON(
-                    "/weather", refreshWeather
-                );
-                window.setTimeout(refreshWeatherEvent, 1000 * 60 * 60);
+                try{
+                    $.getJSON(
+                        "/weather", refreshWeather
+                    );
+                    window.setTimeout(refreshWeatherEvent, 1000 * 60);
+                }
+                catch(e){
+                    window.setTimeout(refreshWeatherEvent, 1000 * 60 * 10);
+                }
             };
 
             var refreshPage = function() {
                 location.reload(true);
             };
 
-            var noSleep = new NoSleep();
 
-            var enableNoSleep = function() {
+            var startFullScreen = function() {
+
+                var noSleep = new NoSleep();
                 noSleep.enable();
+
                 $("#wake_lock").hide();
+
                 var elem = document.getElementById("fs-container")
                 if (elem.webkitRequestFullscreen) {
                     elem.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
@@ -368,17 +384,12 @@
             };
 
             var wakeLock= document.querySelector("#wake_lock");
-            wakeLock.addEventListener('click', enableNoSleep, false);
-            $("#fs-container").click(function(){
-                document.cancelFullScreen();
-                $("#wake_lock").show();
-            });
+            wakeLock.addEventListener('click', startFullScreen, false);
+
+            window.setInterval(refreshPage, 1000 * 60 * 60 * 6);
 
             refreshUpsDataEvent();
             refreshWeatherEvent();
-            window.setInterval(refreshPage, 1000 * 60 * 60 * 12);
-
-
         </script>
     </body>
 
