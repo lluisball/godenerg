@@ -104,23 +104,30 @@ def save_datapoint(log, db_conn, tab_name, data):
         cursor.execute(statement, column_values)
         db_conn.commit()
     except Exception as e:
+        db_conn.rollback()
         log.error('Error saving datapoint')
         log.exception(e)
 
 
 def delete_first_datapoint(db_conn):
     cursor = db_conn.cursor()
-    count, = cursor.execute('SELECT COUNT(1) FROM last_stats').fetchone()
+    count, = cursor.execute(
+        'SELECT COUNT(1) FROM last_stats;'
+    ).fetchone()
 
     if count < SAMPLES:
         return
 
     first_dt, = cursor.execute(
-        'SELECT datetime FROM last_stats ORDER BY datetime ASC LIMIT 1'
+        'SELECT datetime FROM last_stats '
+        'ORDER BY datetime ASC LIMIT 1;'
     ).fetchone()
 
-    cursor.execute('DELETE FROM last_stats WHERE datetime=?', [first_dt])
-    db_conn.commit()
+    try:
+        cursor.execute('DELETE FROM last_stats WHERE datetime=?', [first_dt])
+        db_conn.commit()
+    except:
+        db_conn.rollback()
 
 
 def datalogger_interval_record(log, db_conn, status_data, mode_data, last):
@@ -181,7 +188,8 @@ def get_last_data_datetime(log):
     with connect(datalogger_conf['db_filename'], timeout=1) as db_conn:
         cursor = db_conn.cursor()
         cursor.execute(
-            'SELECT datetime FROM stats ORDER BY datetime DESC LIMIT 1'
+            'SELECT datetime FROM stats '
+            'ORDER BY datetime DESC LIMIT 1;'
         )
         dt = cursor.fetchone()
         if dt:
@@ -200,7 +208,7 @@ def get_avg_last(log, minutes=30):
         from_dt = datetime.now() - timedelta(minutes=minutes)
         cursor.execute(
             '''SELECT AVG(batt_volt), AVG(batt_charge_amps)
-               FROM last_stats WHERE datetime >= {}
+               FROM last_stats WHERE datetime >= {};
             '''.format(int(from_dt.timestamp()))
         )
         row = cursor.fetchone()
@@ -222,20 +230,29 @@ def get_range(from_dt, to_dt, extract_cols=None,
 
         where_stat = 'WHERE datetime >= :from_dt AND datetime <= :to_dt'
         if not grouped:
-            return 'SELECT {} FROM stats {}'.format(cols_stat, where_stat)
+            return 'SELECT {cols_stat} ' \
+                   'FROM stats {where_stat};'.format(
+                        cols_stat=cols_stat,
+                        where_stat=where_stat
+            )
 
         total_items, = db_conn.cursor().execute(
-            'SELECT COUNT(1) FROM stats ' + where_stat, params
+            'SELECT COUNT(1) FROM stats {where_stat};'.format(
+                where_stat=where_stat
+            ),
+            params
         ).fetchone()
 
         if total_items <= MAX_GROUPED_ITEMS:
-            return 'SELECT 1, datetime, {} FROM stats {}'.format(
-                cols_stat, where_stat
+            return 'SELECT 1, datetime, {cols_stat} ' \
+            'FROM stats {where_stat};'.format(
+                cols_stat=cols_stat,
+                where_stat=where_stat
             )
 
         return '''
             SELECT {group_coe}, (datetime / {group_coe}), {cols}
-            FROM stats {where_stat} GROUP BY (datetime / {group_coe})
+            FROM stats {where_stat} GROUP BY (datetime / {group_coe});
         '''.format(
                 **dict(
                     group_coe=INTERVAL * ceil(total_items / MAX_GROUPED_ITEMS),
