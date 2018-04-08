@@ -152,7 +152,7 @@ def datalogger_create(log, comms_executor, cmds):
     try:
         status_cmd, mode_cmd = cmds['status'], cmds['operation_mode']
 
-        with connect(datalogger_conf['db_filename']) as db_conn:
+        with connect(datalogger_conf['db_filename'], timeout=1) as db_conn:
             ensure_db_structure(log, db_conn)
 
             last = 0
@@ -178,7 +178,7 @@ def txt_dt_to_int(txt):
 
 
 def get_last_data_datetime(log):
-    with connect(datalogger_conf['db_filename']) as db_conn:
+    with connect(datalogger_conf['db_filename'], timeout=1) as db_conn:
         cursor = db_conn.cursor()
         cursor.execute(
             'SELECT datetime FROM stats ORDER BY datetime DESC LIMIT 1'
@@ -195,7 +195,7 @@ def get_last_data_datetime(log):
 
 
 def get_avg_last(log, minutes=30):
-    with connect(datalogger_conf['db_filename']) as db_conn:
+    with connect(datalogger_conf['db_filename'], timeout=1) as db_conn:
         cursor = db_conn.cursor()
         from_dt = datetime.now() - timedelta(minutes=minutes)
         cursor.execute(
@@ -252,7 +252,7 @@ def get_range(from_dt, to_dt, extract_cols=None,
         return txt_cols if as_json else ';'.join(txt_cols)
 
 
-    with connect(datalogger_conf['db_filename']) as db_conn:
+    with connect(datalogger_conf['db_filename'], timeout=1) as db_conn:
         params = dict(
             from_dt=txt_dt_to_int(from_dt), to_dt=txt_dt_to_int(to_dt)
         )

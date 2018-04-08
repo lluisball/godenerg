@@ -93,6 +93,9 @@ def calculate_cloud_cover(data, all_day=False):
         from_hour = sun_hours['start_sun'].hour
 
     to_hour = sun_hours['end_sun'].hour
+    if 'hour' not in data:
+        return '-'
+
     hours = data['hour'][from_hour: to_hour + 1]
     total_cover = sum(hour['cloud'] for hour in hours)
 
@@ -107,6 +110,11 @@ def calculate_today_forecast(data):
     sun_hours = calculate_sun_hours(data)
     from_hour = now.hour
     to_hour = sun_hours['end_sun'].hour
+
+    if 'hour' not in data:
+        return weather_condition_to_code(
+            data['day']['condition']['text']
+        )
 
     hours = data['hour'][from_hour: to_hour + 1]
 
@@ -227,3 +235,13 @@ def get_weather_stats(log):
         'today_txt': forecast[0]['day']['condition']['text'],
         **days_labels()
     }
+
+if __name__=='__main__':
+    import logging
+    import sys
+
+    log = logging.getLogger('godenerg')
+    log.setLevel(logging.DEBUG)
+    log.addHandler(logging.StreamHandler(sys.stdout))
+
+    print(get_weather_stats(log))

@@ -362,11 +362,9 @@
             };
 
 
+
+            var noSleep = new NoSleep();
             var startFullScreen = function() {
-
-                var noSleep = new NoSleep();
-                noSleep.enable();
-
                 $("#wake_lock").hide();
 
                 var elem = document.getElementById("fs-container")
@@ -381,7 +379,10 @@
                       elem.requestFullscreen();
                     }
                }
+
+               noSleep.enable();
             };
+
 
             var wakeLock= document.querySelector("#wake_lock");
             wakeLock.addEventListener('click', startFullScreen, false);
