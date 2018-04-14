@@ -125,7 +125,7 @@ def atomic_execute(comms_lock, connector, cmd):
             return Response(status=Status.KO, data=None)
 
         CMDS_CACHE[key] = {
-            'res': execute(log, connector, cmd)
+            'res': execute(log, connector, cmd),
             'last': time()
         }
     except Exception as e:
