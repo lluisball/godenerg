@@ -7,7 +7,7 @@ from signal import SIGKILL
 from urllib.request import urlopen
 from urllib.error import HTTPError
 from functools import partial
-from time import sleep
+from time import sleep, time
 from multiprocessing import Process, Lock
 from threading import Thread, Event
 from datetime import datetime
@@ -37,10 +37,11 @@ MAX_RETRIES_FAILS = 1
 WATCHDOG_URL = 'http://localhost:{}/cmds?cmd=operation_mode'.format(
     http_conf['port']
 )
-WATCHDOG_MAX_TIMEOUT = 15
-WATCHDOG_INTERVAL = 10
+WATCHDOG_MAX_TIMEOUT = 20
+WATCHDOG_INTERVAL = 40
 MAX_CONNECTOR_ACQUIRE_TIME = 10
 
+CMDS_CACHE = {}
 
 class ShutdownDaemonAndRestart(Exception):
     pass
@@ -112,13 +113,17 @@ def start_datalogger_http():
 
 
 def atomic_execute(comms_lock, connector, cmd):
+    now = time()
+    if cmd in CMDS_CACHE ans CMDS_CACHE[cmd]['last'] > (time() - 2):
+        return CMDS_CACHE[cmd]['res']
+
     acquired_lock = False
     try:
-        acquired_lock = comms_lock.acquire(timeout=10)
+        acquired_lock = comms_lock.acquire(timeout=2)
         if not acquired_lock:
             return Response(status=Status.KO, data=None)
-        return execute(log, connector, cmd)
-
+        CMDS_CACHE[cmd] = execute(log, connector, cmd)
+        CMDS_CACHE['last'] = time()
     except Exception as e:
         log.exception(e)
 

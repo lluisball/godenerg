@@ -130,7 +130,7 @@ class BaseRemoteCommandsHandler(BaseGodenergHandler):
 
     def serve_static(self, fname, binary=False):
         mode = 'rb' if binary else 'r'
-        with open('/home/ups/godenerg/axpert/static/' + fname, mode) as fr:
+        with open('/home/pi/godenerg/axpert/static/' + fname, mode) as fr:
             if binary:
                 return fr.read()
             return fr.read().encode('utf-8')

@@ -1,4 +1,4 @@
-APP_PATH = '/home/ups/godenerg/'
+APP_PATH = '/home/pi/godenerg/'
 
 
 logger_conf = {
