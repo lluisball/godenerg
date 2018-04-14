@@ -114,7 +114,7 @@ def start_datalogger_http():
 
 def atomic_execute(comms_lock, connector, cmd):
     now = time()
-    if cmd in CMDS_CACHE ans CMDS_CACHE[cmd]['last'] > (time() - 2):
+    if cmd in CMDS_CACHE and CMDS_CACHE[cmd]['last'] > (time() - 2):
         return CMDS_CACHE[cmd]['res']
 
     acquired_lock = False
