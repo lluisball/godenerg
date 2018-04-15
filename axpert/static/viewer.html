@@ -323,10 +323,10 @@
                         "/cmds?cmd=status&cmd=operation_mode&merge=1",
                         refreshUpsData
                     );
-                    window.setTimeout(refreshUpsDataEvent, 2500);
+                    window.setTimeout(refreshUpsDataEvent, 1000);
                 }
                 catch(e){
-                    window.setTimeout(refreshUpsDataEvent, 10000);
+                    window.setTimeout(refreshUpsDataEvent, 5000);
                 }
             };
 

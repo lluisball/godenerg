@@ -117,7 +117,7 @@ def atomic_execute(comms_lock, connector, cmd):
     try:
         now = time()
         key = str(cmd.code + cmd.val)
-        if key in CMDS_CACHE and CMDS_CACHE[key]['last'] > (time() - 2):
+        if key in CMDS_CACHE and CMDS_CACHE[key]['last'] > (time() - 1):
             return CMDS_CACHE[key]['res']
 
         acquired_lock = comms_lock.acquire(timeout=5)
@@ -128,6 +128,8 @@ def atomic_execute(comms_lock, connector, cmd):
             'res': execute(log, connector, cmd),
             'last': time()
         }
+        return CMDS_CACHE[key]['res']
+
     except Exception as e:
         log.exception(e)
 
