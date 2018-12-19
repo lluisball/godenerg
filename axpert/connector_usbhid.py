@@ -15,10 +15,19 @@ class USBConnector(Connector):
 
     def _read(self, size):
         data = ''
-        while True:
-            data += ''.join(map(chr, self.dev.read(size)))
-            if not data or '\r' in data or len(data) >= size:
-                break
+        reading = True
+        while reading:
+            incoming = ''.join(map(chr, self.dev.read(16)))
+            self.log.debug("Read character [%s]", incoming)
+            for char in incoming:
+                if char == '\0':
+                    continue
+                data += char
+                if char == '\r':
+                    reading = False
+                    break
+
+        self.log.debug("Read data [%s]", data)
         return data
 
     def open(self):
