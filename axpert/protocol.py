@@ -148,6 +148,54 @@ def status_json_formatter(raw, serialize=True):
     return json_dumps(struct) if serialize else struct
 
 
+def settings_json_formatter(raw, serialize=True):
+    """
+    JSON formatter for settings - QPIRI
+    input: the raw QPIRI string, serialize: boolean
+    output: json or serialized format of the QPIRI vaiables
+    """
+    to_float = typer('%.2f')
+    to_int = typer('%d')
+    to_str = typer('%s')
+
+    structure = (
+        ('grid_volt_rating', to_float),
+        ('grid_current_rating', to_float),
+        ('ac_volt_rating', to_float),
+        ('ac_freq_rating', to_float),
+        ('ac_amps_rating', to_float),
+        ('ac_va_rating', to_int),
+        ('ac_watt_rating', to_int),
+        ('batt_rating', to_float),
+        ('batt_recharge_volt', to_float),
+        ('batt_under_volt', to_float),
+        ('batt_bulk_volt', to_float),
+        ('batt_float_volt', to_float),
+        ('batt_type', to_int),
+        ('max_grid_charge_current', to_int),
+        ('max_charge_current', to_int),
+        ('in_volt_range', to_int),
+        ('out_source_priority', to_int),
+        ('charger_source_priority', to_int),
+        ('machine_type', to_int),
+        ('topology', to_int),
+        ('out_mode', to_int),
+        ('batt_redischarge_volt', to_float)
+    )
+
+    if not raw:
+        return None
+
+    # Ignore initial '(' and end 5 byte split
+    raw_tokens = raw[1:-5].split(' ')
+    data = {
+        label: formatter(token)
+        for (label, formatter), token in zip(structure, raw_tokens)
+    }
+
+    return json_dumps(data) if serialize else struct
+
+
 def operation_json_formatter(raw, serialize=True):
     modes = {
         'P': 'PM', 'S': 'SB',
@@ -168,7 +216,7 @@ CMD_REL = {
     ),
     'settings': CmdSpec(
         code='QPIRI', size=110, val='',
-        json=None
+        json=settings_json_formatter
     ),
     'default_settings': CmdSpec(
         code='QDI', size=81, val='',
