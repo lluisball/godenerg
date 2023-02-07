@@ -43,8 +43,14 @@ def parse_inverter_conf(data):
 def execute(log, connector, cmd):
     value = cmd.val if cmd.val else ''
     encoded_cmd = cmd.code.encode() + value.encode()
-    checksum = crc16xmodem(encoded_cmd)
-    request = encoded_cmd + pack('>H', checksum) + b'\r'
+    checksum = pack('>H', crc16xmodem(encoded_cmd))
+    checksumhigh = checksum[0]
+    checksumlow = checksum[1]
+    if checksumhigh == 40 or checksumhigh == 13 or checksumhigh == 10:
+        checksumhigh += 1
+    if checksumlow == 40 or checksumlow == 13 or checksumlow == 10:
+        checksumlow += 1
+    request = encoded_cmd + pack('>B', checksumhigh) + pack('>B', checksumlow) + b'\r'
 
     log.debug(
         'Request {} done as "{}"'.format(
@@ -150,9 +156,9 @@ def status_json_formatter(raw, serialize=True):
 
 def operation_json_formatter(raw, serialize=True):
     modes = {
-        'P': 'PM', 'S': 'SB',
-        'L': 'LN', 'B': 'BT',
-        'F': 'FA', 'H': 'PS'
+        80: 'PM', 83: 'SB',
+        76: 'LN', 66: 'BT',
+        70: 'FA', 72: 'PS'
     }
     if not raw:
         return None
